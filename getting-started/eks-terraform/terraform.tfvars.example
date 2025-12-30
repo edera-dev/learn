@@ -1,0 +1,23 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+# Required: Edera's AWS account ID (the account that owns the AMI)
+# Edera will share their AMI with your AWS account and provide this ID
+# Contact support@edera.dev to get this account ID
+edera_account_id = "REPLACE_WITH_EDERA_ACCOUNT_ID"
+
+# Optional: Cluster configuration
+cluster_name    = "edera-cluster"
+cluster_version = "1.32"
+
+# Optional: AWS region (Edera AMIs only available in us-west-2 and us-gov-west-1)
+region = "us-west-2"
+
+# Optional: Node group configuration
+instance_types = ["t3.medium"]
+desired_size   = 2
+min_size       = 1
+max_size       = 3
+
+# Optional: SSH access to worker nodes (default: disabled)
+# enable_ssh_access = true
+# ssh_key_name     = "my-ec2-keypair"
