@@ -27,6 +27,7 @@ id_ed25519*
 .env.local
 .env.*.local
 terraform.tfvars
+info
 
 # IDE files
 .vscode/

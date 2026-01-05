@@ -99,7 +99,7 @@ We welcome contributions! To add a new example:
 
 ## 📄 License
 
-This repository is licensed under the Apache License 2.0.
+This repository is licensed under the [Apache License 2.0](LICENSE).
 
 ## 🔗 Related
 
