@@ -5,6 +5,7 @@ This repository contains working, tested examples for deploying Edera container 
 ## 🚀 Quick Start
 
 All examples are self-contained and include:
+
 - ✅ Complete, working code (no incomplete snippets)
 - ✅ Comprehensive documentation
 - ✅ Automated testing and verification
@@ -33,6 +34,7 @@ Before using any examples, ensure you have:
 ## 🛡️ Region Support
 
 Edera AMIs are currently available in:
+
 - **us-west-2** (Oregon) - Primary region
 - **us-gov-west-1** (AWS GovCloud US-West) - For government workloads
 
@@ -97,10 +99,9 @@ We welcome contributions! To add a new example:
 
 ## 📄 License
 
-This repository is licensed under the [Apache License 2.0](LICENSE).
+This repository is licensed under the Apache License 2.0.
 
 ## 🔗 Related
 
 - [Edera Documentation](https://docs.edera.dev)
 - [Edera Website](https://edera.dev)
-- [Edera Security Platform](https://docs.edera.dev/concepts/platform-overview/)

@@ -1,6 +1,6 @@
 # EKS with Terraform - Complete Example
 
-This example deploys a complete Amazon EKS cluster with Edera container security using Terraform. It creates everything from scratch including VPC, subnets, security groups, and EKS cluster with Edera-protected worker nodes.
+This example deploys a complete Amazon EKS cluster with Edera using Terraform. It creates everything from scratch including VPC, subnets, security groups, and EKS cluster with Edera-protected worker nodes.
 
 ## 🎯 What This Example Creates
 
@@ -17,7 +17,7 @@ This example deploys a complete Amazon EKS cluster with Edera container security
 # 1. Copy and configure variables
 cp terraform.tfvars.example terraform.tfvars
 
-# 2. Edit terraform.tfvars with your Edera account ID
+# 2. Edit terraform.tfvars with the Edera account ID
 vim terraform.tfvars
 
 # 3. Deploy everything
@@ -43,6 +43,7 @@ Before starting, ensure you have:
    - IAM (service roles and policies)
 
 3. **Terraform or OpenTofu**: Version 1.3 or later
+
    ```bash
    terraform --version
    # OR
@@ -50,6 +51,7 @@ Before starting, ensure you have:
    ```
 
 4. **kubectl**: For testing and verification
+
    ```bash
    kubectl version --client
    ```
@@ -58,7 +60,7 @@ Before starting, ensure you have:
 
 ### Required Configuration
 
-Edit `terraform.tfvars` with your Edera account ID:
+Edit `terraform.tfvars` with the Edera account ID:
 
 ```hcl
 # Required: Your Edera AWS account ID (provided by Edera team)
@@ -96,16 +98,19 @@ ssh_key_name     = "your-existing-ec2-keypair"
 ```
 
 **Prerequisites for SSH:**
+
 - An existing EC2 key pair in the same region
 - The key pair name specified in `ssh_key_name`
 
 **Creating an EC2 key pair:**
+
 ```bash
 aws ec2 create-key-pair --key-name edera-eks-key --query 'KeyMaterial' --output text > edera-eks-key.pem
 chmod 400 edera-eks-key.pem
 ```
 
 **Connecting via SSH:**
+
 ```bash
 # Get node public IPs (when using public subnets)
 kubectl get nodes -o wide
@@ -119,11 +124,13 @@ ssh -i edera-eks-key.pem ec2-user@<node-public-ip>
 This example works with both regular AWS regions and AWS GovCloud:
 
 **For regular AWS:**
+
 ```hcl
 region = "us-west-2"
 ```
 
 **For AWS GovCloud:**
+
 ```hcl
 region = "us-gov-west-1"
 ```
@@ -184,6 +191,7 @@ make verify
 ```
 
 This checks:
+
 - ✅ All nodes are running Edera AMIs
 - ✅ Nodes have correct `runtime=edera` labels
 - ✅ RuntimeClass is properly configured
@@ -216,6 +224,7 @@ Run the detailed AMI verification script:
 ```
 
 This script:
+
 - Lists AMI ID and name for each node
 - Confirms nodes are using Edera AMIs
 - Validates node labels and RuntimeClass configuration
@@ -241,21 +250,26 @@ make destroy
 
 ### Common Issues
 
-**Pod Stuck in Pending**
+#### Pod Stuck in Pending
+
 ```bash
 kubectl describe pod edera-test-pod -n edera-test
 ```
+
 Check for:
+
 - Missing `runtime=edera` labels on nodes
 - RuntimeClass not installed
 - Node capacity issues
 
-**AMI Not Found**
+#### AMI Not Found
+
 - Verify your Edera account ID is correct
 - Ensure you have access to Edera AMIs
 - Check you're in a supported region (us-west-2 or us-gov-west-1)
 
-**Authentication Issues**
+#### Authentication Issues
+
 ```bash
 aws sts get-caller-identity
 aws eks --region us-west-2 describe-cluster --name edera-cluster
@@ -264,17 +278,20 @@ aws eks --region us-west-2 describe-cluster --name edera-cluster
 ### Getting Help
 
 1. **Check Logs**:
+
    ```bash
    kubectl logs edera-test-pod -n edera-test
    ```
 
 2. **Describe Resources**:
+
    ```bash
    kubectl describe pod edera-test-pod -n edera-test
    kubectl describe node
    ```
 
 3. **Terraform State**:
+
    ```bash
    terraform show
    terraform output
