@@ -13,7 +13,7 @@ cluster_version = "1.32"
 region = "us-west-2"
 
 # Optional: Node group configuration
-instance_types = ["t3.medium"]
+instance_types = ["m5n.xlarge"]
 desired_size   = 2
 min_size       = 1
 max_size       = 3

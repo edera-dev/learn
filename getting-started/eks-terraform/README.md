@@ -78,7 +78,7 @@ cluster_version = "1.32"
 region          = "us-west-2"  # or us-gov-west-1 for GovCloud
 
 # Node group settings
-instance_types = ["t3.medium"]
+instance_types = ["m5n.xlarge"]
 desired_size   = 2
 min_size       = 1
 max_size       = 3

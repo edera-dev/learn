@@ -25,7 +25,7 @@ variable "cluster_version" {
 variable "instance_types" {
   description = "List of instance types associated with the EKS Node Group"
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["m5n.xlarge"]
 }
 
 variable "min_size" {
