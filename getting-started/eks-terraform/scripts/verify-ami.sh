@@ -104,7 +104,7 @@ if kubectl get runtimeclass edera >/dev/null 2>&1; then
     fi
 else
     echo "❌ Edera RuntimeClass is not installed"
-    echo "Run: kubectl apply -f kubernetes/runtime-class.yaml"
+    echo "Run: kubectl apply -f https://public.edera.dev/kubernetes/runtime-class.yaml"
 fi
 
 echo ""

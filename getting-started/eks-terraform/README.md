@@ -42,7 +42,7 @@ Before starting, ensure you have:
    - EKS (cluster and node group management)
    - IAM (service roles and policies)
 
-3. **Terraform or OpenTofu**: Version 1.3 or later
+3. **Terraform or OpenTofu**
 
    ```bash
    terraform --version
@@ -63,7 +63,7 @@ Before starting, ensure you have:
 Edit `terraform.tfvars` with the Edera account ID:
 
 ```hcl
-# Required: Your Edera AWS account ID (provided by Edera team)
+# Required: The Edera AWS account ID (provided by Edera team)
 edera_account_id = "123456789012"
 ```
 
@@ -174,7 +174,7 @@ tofu apply -auto-approve
 aws eks --region us-west-2 update-kubeconfig --name edera-cluster
 
 # Apply RuntimeClass
-kubectl apply -f kubernetes/runtime-class.yaml
+kubectl apply -f https://public.edera.dev/kubernetes/runtime-class.yaml
 
 # Deploy test workload
 kubectl apply -f kubernetes/test-workload.yaml
@@ -264,7 +264,7 @@ Check for:
 
 #### AMI Not Found
 
-- Verify your Edera account ID is correct
+- Verify the Edera account ID is correct
 - Ensure you have access to Edera AMIs
 - Check you're in a supported region (us-west-2 or us-gov-west-1)
 
@@ -362,6 +362,5 @@ This example creates:
 - `outputs.tf` - Output values
 - `terraform.tfvars.example` - Configuration template
 - `Makefile` - Automation commands
-- `kubernetes/runtime-class.yaml` - Edera RuntimeClass
 - `kubernetes/test-workload.yaml` - Test pod and service
 - `scripts/verify-ami.sh` - Verification script

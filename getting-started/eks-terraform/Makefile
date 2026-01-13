@@ -21,7 +21,7 @@ help:
 	@echo ""
 	@echo "Quick start:"
 	@echo "  1. cp terraform.tfvars.example terraform.tfvars"
-	@echo "  2. Edit terraform.tfvars with your Edera account ID"
+	@echo "  2. Edit terraform.tfvars with the Edera account ID"
 	@echo "  3. make deploy"
 	@echo "  4. make test"
 
@@ -60,7 +60,7 @@ configure:
 	@echo "Configuring kubectl..."
 	@eval "$$($(TF_TOOL) output -raw configure_kubectl)"
 	@echo "Applying Edera RuntimeClass..."
-	kubectl apply -f kubernetes/runtime-class.yaml
+	kubectl apply -f https://public.edera.dev/kubernetes/runtime-class.yaml
 	@echo "✅ Configuration complete"
 
 # Test the deployment
