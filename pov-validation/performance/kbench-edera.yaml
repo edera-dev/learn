@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kbench-edera
+spec:
+  template:
+    spec:
+      runtimeClassName: edera
+      restartPolicy: Never
+      containers:
+      - name: kbench
+        image: ghcr.io/edera-dev/kbench:latest
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"

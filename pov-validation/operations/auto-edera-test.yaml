@@ -1,0 +1,11 @@
+# Test pod for Kyverno policy - deploy to secure-workloads namespace
+# The policy will automatically add runtimeClassName: edera
+apiVersion: v1
+kind: Pod
+metadata:
+  name: auto-edera-test
+  namespace: secure-workloads
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest

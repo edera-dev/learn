@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: falco-test
+spec:
+  runtimeClassName: edera
+  containers:
+  - name: alpine
+    image: alpine:latest
+    command: ["sh", "-c", "while true; do sleep 30; done"]

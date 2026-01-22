@@ -1,0 +1,16 @@
+# Baseline kbench test without Edera for comparison
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kbench-baseline
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: kbench
+        image: ghcr.io/edera-dev/kbench:latest
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"

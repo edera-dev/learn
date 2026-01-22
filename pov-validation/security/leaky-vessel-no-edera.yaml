@@ -1,0 +1,11 @@
+# WARNING: This demonstrates a container escape vulnerability
+# Only run on test clusters
+apiVersion: v1
+kind: Pod
+metadata:
+  name: leaky-vessel-no-edera
+spec:
+  # No runtimeClassName - uses default containerd
+  containers:
+  - name: leaky-vessel
+    image: ghcr.io/edera-dev/leaky-vessel-demo:latest
