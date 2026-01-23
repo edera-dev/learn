@@ -14,10 +14,14 @@ help:
 	@echo "  make falco-test         - Deploy Falco test pod (requires Edera Falco plugin)"
 	@echo ""
 	@echo "Performance Tests:"
-	@echo "  make iperf              - Run iperf network benchmark"
+	@echo "  make iperf-compare      - Run iperf benchmark with comparison table"
+	@echo "  make iperf              - Run iperf network benchmark (Edera only)"
 	@echo "  make iperf-baseline     - Run iperf baseline (without Edera)"
-	@echo "  make kbench             - Run kbench CPU/storage benchmark"
-	@echo "  make kbench-baseline    - Run kbench baseline (without Edera)"
+	@echo "  make sysbench           - Run sysbench CPU benchmark (Edera)"
+	@echo "  make sysbench-baseline  - Run sysbench CPU baseline (without Edera)"
+	@echo "  make sysbench-compare   - Run sysbench with comparison table"
+	@echo "  make kcbench            - Run kcbench CPU benchmark (kernel compile)"
+	@echo "  make kcbench-baseline   - Run kcbench baseline (without Edera)"
 	@echo ""
 	@echo "Operations Tests:"
 	@echo "  make grafana-install    - Install Prometheus/Grafana stack"
@@ -98,7 +102,7 @@ falco-install:
 	@echo ""
 	helm repo add falcosecurity https://falcosecurity.github.io/charts
 	helm repo update
-	helm install falco falcosecurity/falco \
+	helm upgrade --install falco falcosecurity/falco \
 		--namespace falco \
 		--create-namespace \
 		-f security/falco/falco-edera-values.yaml
@@ -122,35 +126,93 @@ falco-test:
 
 # Performance Tests
 iperf:
-	kubectl apply -f performance/iperf-server.yaml
-	kubectl apply -f performance/iperf-client.yaml
-	@echo "Waiting for pods to be ready..."
-	kubectl wait --for=condition=ready pod/iperf-server --timeout=120s
-	kubectl wait --for=condition=ready pod/iperf-client --timeout=120s
+	kubectl apply -f performance/iperf-edera.yaml
+	@echo "Waiting for pod to be ready..."
+	kubectl wait --for=condition=ready pod/iperf-edera --timeout=120s
 	@echo ""
-	@echo "Run benchmark with: kubectl exec -it iperf-client -- iperf3 -c iperf-server -t 30"
+	@POD_IP=$$(kubectl get pod iperf-edera -o jsonpath='{.status.podIP}'); \
+	echo "Run benchmark with: kubectl exec -it iperf-edera -c iperf-client -- iperf3 -c $$POD_IP -t 30"
 
 iperf-baseline:
 	kubectl apply -f performance/iperf-baseline.yaml
-	@echo "Waiting for pods to be ready..."
-	kubectl wait --for=condition=ready pod/iperf-server-baseline --timeout=120s
-	kubectl wait --for=condition=ready pod/iperf-client-baseline --timeout=120s
+	@echo "Waiting for pod to be ready..."
+	kubectl wait --for=condition=ready pod/iperf-baseline --timeout=120s
 	@echo ""
-	@echo "Run benchmark with: kubectl exec -it iperf-client-baseline -- iperf3 -c iperf-server-baseline -t 30"
+	@echo "Run benchmark with: kubectl exec -it iperf-baseline -c iperf-client -- iperf3 -c localhost -t 30"
 
-kbench:
-	kubectl apply -f performance/kbench-edera.yaml
-	@echo "Waiting for job to complete..."
-	kubectl wait --for=condition=complete job/kbench-edera --timeout=300s
+iperf-compare:
+	@echo "=== iperf Network Performance Comparison ==="
 	@echo ""
-	kubectl logs job/kbench-edera
+	@echo "Deploying test pods..."
+	@kubectl apply -f performance/iperf-edera.yaml -f performance/iperf-baseline.yaml > /dev/null
+	@kubectl wait --for=condition=ready pod/iperf-edera pod/iperf-baseline --timeout=120s > /dev/null
+	@echo ""
+	@echo "Running Edera benchmark (30s)..."
+	@POD_IP=$$(kubectl get pod iperf-edera -o jsonpath='{.status.podIP}'); \
+	kubectl exec iperf-edera -c iperf-client -- iperf3 -c $$POD_IP -t 30 -J > /tmp/iperf-edera.json 2>/dev/null; \
+	echo "Running Baseline benchmark (30s)..."; \
+	kubectl exec iperf-baseline -c iperf-client -- iperf3 -c localhost -t 30 -J > /tmp/iperf-baseline.json 2>/dev/null; \
+	EDERA=$$(jq '.end.sum_received.bits_per_second' /tmp/iperf-edera.json); \
+	BASELINE=$$(jq '.end.sum_received.bits_per_second' /tmp/iperf-baseline.json); \
+	EDERA_GBPS=$$(echo "scale=1; $$EDERA / 1000000000" | bc); \
+	BASELINE_GBPS=$$(echo "scale=1; $$BASELINE / 1000000000" | bc); \
+	PCT=$$(echo "scale=0; $$EDERA * 100 / $$BASELINE" | bc); \
+	echo ""; \
+	echo "┌─────────────┬────────────────┬──────────────┐"; \
+	echo "│ Test        │ Throughput     │ % of Baseline│"; \
+	echo "├─────────────┼────────────────┼──────────────┤"; \
+	printf "│ Edera       │ %6.1f Gbps    │ %3d%%         │\n" $$EDERA_GBPS $$PCT; \
+	printf "│ Baseline    │ %6.1f Gbps    │ 100%%         │\n" $$BASELINE_GBPS; \
+	echo "└─────────────┴────────────────┴──────────────┘"
 
-kbench-baseline:
-	kubectl apply -f performance/kbench-baseline.yaml
+sysbench:
+	kubectl apply -f performance/sysbench-edera.yaml
 	@echo "Waiting for job to complete..."
-	kubectl wait --for=condition=complete job/kbench-baseline --timeout=300s
+	kubectl wait --for=condition=complete job/sysbench-edera --timeout=300s
 	@echo ""
-	kubectl logs job/kbench-baseline
+	kubectl logs job/sysbench-edera
+
+sysbench-baseline:
+	kubectl apply -f performance/sysbench-baseline.yaml
+	@echo "Waiting for job to complete..."
+	kubectl wait --for=condition=complete job/sysbench-baseline --timeout=300s
+	@echo ""
+	kubectl logs job/sysbench-baseline
+
+sysbench-compare:
+	@echo "=== sysbench CPU Performance Comparison ==="
+	@echo ""
+	@echo "Deploying test jobs..."
+	@kubectl delete job sysbench-edera sysbench-baseline --ignore-not-found > /dev/null 2>&1 || true
+	@kubectl apply -f performance/sysbench-edera.yaml -f performance/sysbench-baseline.yaml > /dev/null
+	@echo "Waiting for jobs to complete (~90 seconds)..."
+	@kubectl wait --for=condition=complete job/sysbench-edera job/sysbench-baseline --timeout=300s > /dev/null
+	@echo ""
+	@EDERA_EPS=$$(kubectl logs job/sysbench-edera | grep "events per second" | tail -1 | awk '{print $$NF}'); \
+	BASELINE_EPS=$$(kubectl logs job/sysbench-baseline | grep "events per second" | tail -1 | awk '{print $$NF}'); \
+	EDERA_LAT=$$(kubectl logs job/sysbench-edera | grep "avg:" | tail -1 | awk '{print $$2}'); \
+	BASELINE_LAT=$$(kubectl logs job/sysbench-baseline | grep "avg:" | tail -1 | awk '{print $$2}'); \
+	PCT=$$(echo "scale=1; $$EDERA_EPS * 100 / $$BASELINE_EPS" | bc); \
+	echo "┌─────────────┬─────────────────┬─────────────┬──────────────┐"; \
+	echo "│ Test        │ Events/sec      │ Avg Latency │ % of Baseline│"; \
+	echo "├─────────────┼─────────────────┼─────────────┼──────────────┤"; \
+	printf "│ Edera       │ %10.2f      │ %6.2f ms   │ %5.1f%%       │\n" $$EDERA_EPS $$EDERA_LAT $$PCT; \
+	printf "│ Baseline    │ %10.2f      │ %6.2f ms   │ 100.0%%       │\n" $$BASELINE_EPS $$BASELINE_LAT; \
+	echo "└─────────────┴─────────────────┴─────────────┴──────────────┘"
+
+kcbench:
+	kubectl apply -f performance/kcbench-edera.yaml
+	@echo "Waiting for job to complete (this may take 10+ minutes)..."
+	kubectl wait --for=condition=complete job/kcbench-edera --timeout=1800s
+	@echo ""
+	kubectl logs job/kcbench-edera
+
+kcbench-baseline:
+	kubectl apply -f performance/kcbench-baseline.yaml
+	@echo "Waiting for job to complete (this may take 10+ minutes)..."
+	kubectl wait --for=condition=complete job/kcbench-baseline --timeout=1800s
+	@echo ""
+	kubectl logs job/kcbench-baseline
 
 # Operations Tests
 grafana-install:
@@ -184,10 +246,10 @@ clean-security:
 	-kubectl delete namespace falco
 
 clean-performance:
-	-kubectl delete -f performance/iperf-server.yaml
-	-kubectl delete -f performance/iperf-client.yaml
+	-kubectl delete -f performance/iperf-edera.yaml
 	-kubectl delete -f performance/iperf-baseline.yaml
-	-kubectl delete job kbench-edera kbench-baseline
+	-kubectl delete job sysbench-edera sysbench-baseline
+	-kubectl delete job kcbench-edera kcbench-baseline
 
 clean-operations:
 	-kubectl delete -f operations/auto-edera-test.yaml

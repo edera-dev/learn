@@ -1,0 +1,38 @@
+# CPU benchmark baseline (without Edera) using sysbench
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sysbench-baseline
+spec:
+  template:
+    spec:
+      # No runtimeClassName - uses default runtime
+      restartPolicy: Never
+      containers:
+      - name: sysbench
+        image: severalnines/sysbench:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "=== Baseline CPU Benchmark (sysbench) ==="
+            echo ""
+            echo "System info:"
+            echo "CPUs available: $(nproc)"
+            cat /proc/cpuinfo | grep "model name" | head -1
+            echo ""
+            echo "Running CPU benchmark (10 seconds, prime numbers to 20000)..."
+            echo ""
+            sysbench cpu --cpu-max-prime=20000 --threads=2 --time=10 run
+            echo ""
+            echo "Running CPU benchmark (60 seconds for more stable results)..."
+            echo ""
+            sysbench cpu --cpu-max-prime=20000 --threads=2 --time=60 run
+            echo ""
+            echo "=== Benchmark Complete ==="
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "2"
+          limits:
+            memory: "512Mi"
+            cpu: "2"

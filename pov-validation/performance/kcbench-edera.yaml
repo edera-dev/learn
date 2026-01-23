@@ -1,0 +1,76 @@
+# CPU benchmark with Edera using kernel compilation
+# Uses pre-built image with all dependencies included
+# Requires 16GB memory and 8 CPUs for zone resources
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kcbench-edera
+spec:
+  template:
+    metadata:
+      annotations:
+        dev.edera/resource-policy: "dynamic"
+        dev.edera/initial-memory-request: "2048"
+    spec:
+      runtimeClassName: edera
+      restartPolicy: Never
+      volumes:
+      - name: workspace
+        emptyDir:
+          sizeLimit: 15Gi
+      containers:
+      - name: kcbench
+        image: ttl.sh/kcbench-prebuilt-v2:24h
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            set -ex
+            echo "=== Edera CPU Benchmark (kernel compilation) ==="
+            echo ""
+            echo "CPUs available: $(nproc)"
+            echo "Memory:"
+            free -h
+            echo ""
+            echo "Disk space:"
+            df -h
+            echo ""
+
+            # Setup workspace
+            mkdir -p /workspace/tmp
+            rm -rf /tmp 2>/dev/null || true
+            ln -sf /workspace/tmp /tmp
+            export TMPDIR=/workspace/tmp
+            export HOME=/workspace
+
+            # Extract kernel source
+            echo "Extracting kernel source..."
+            cd /workspace
+            tar -xf /usr/share/kcbench/linux-6.6.70.tar.xz
+            cd linux-6.6.70
+
+            # Configure and build
+            echo "Configuring kernel (defconfig)..."
+            make defconfig
+
+            echo ""
+            echo "Starting kernel compilation with $(nproc) CPUs..."
+            START=$(date +%s.%N)
+            make -j$(nproc)
+            END=$(date +%s.%N)
+
+            ELAPSED=$(echo "$END - $START" | bc)
+            echo ""
+            echo "=== Results ==="
+            echo "Compile time: ${ELAPSED} seconds"
+            echo "CPUs used: $(nproc)"
+            echo "=== Benchmark Complete ==="
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "2"
+          limits:
+            memory: "4Gi"
+            cpu: "2"

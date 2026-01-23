@@ -1,10 +1,10 @@
-# iperf baseline benchmark without Edera - client and server in same pod
+# iperf benchmark with Edera - client and server in same pod (same zone)
 apiVersion: v1
 kind: Pod
 metadata:
-  name: iperf-baseline
+  name: iperf-edera
 spec:
-  # No runtimeClassName - uses default runtime
+  runtimeClassName: edera
   containers:
   - name: iperf-server
     image: networkstatic/iperf3:latest
