@@ -2,6 +2,8 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: falco-test
+  annotations:
+    dev.edera/kernel: ghcr.io/edera-dev/zone-kernel:6.16
 spec:
   runtimeClassName: edera
   containers:
