@@ -1,0 +1,16 @@
+# iperf baseline benchmark without Edera - client and server in same pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iperf-baseline
+spec:
+  # No runtimeClassName - uses default runtime
+  containers:
+  - name: iperf-server
+    image: networkstatic/iperf3:latest
+    command: ["iperf3", "-s"]
+    ports:
+    - containerPort: 5201
+  - name: iperf-client
+    image: networkstatic/iperf3:latest
+    command: ["sleep", "3600"]

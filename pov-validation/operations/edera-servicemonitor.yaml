@@ -1,0 +1,47 @@
+# ServiceMonitor for Edera Protect metrics
+# Requires a headless Service pointing to Edera node(s)
+apiVersion: v1
+kind: Service
+metadata:
+  name: edera-protect-metrics
+  namespace: monitoring
+  labels:
+    app: edera-protect
+spec:
+  clusterIP: None
+  ports:
+  - name: metrics
+    port: 3035
+    targetPort: 3035
+---
+# Endpoints must be created manually with Edera node IPs
+# Replace NODE_IP with your Edera node's internal IP
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: edera-protect-metrics
+  namespace: monitoring
+subsets:
+- addresses:
+  - ip: NODE_IP  # Replace with: kubectl get nodes -l runtime=edera -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
+  ports:
+  - name: metrics
+    port: 3035
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: edera-protect
+  namespace: monitoring
+  labels:
+    release: prometheus  # Match Prometheus selector
+spec:
+  selector:
+    matchLabels:
+      app: edera-protect
+  namespaceSelector:
+    matchNames:
+    - monitoring
+  endpoints:
+  - port: metrics
+    interval: 30s

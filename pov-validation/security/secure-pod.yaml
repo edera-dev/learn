@@ -1,0 +1,17 @@
+# Secure pod WITH Edera - secrets are isolated in a zone
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-pod
+spec:
+  runtimeClassName: edera
+  containers:
+  - name: secure-container
+    image: busybox
+    env:
+    - name: PASSWORD
+      value: superSecretPassword
+    - name: SECRET
+      value: reallyVeryImportantSecret
+    command: ["/bin/sh", "-c"]
+    args: ["while true; do sleep 5; done"]

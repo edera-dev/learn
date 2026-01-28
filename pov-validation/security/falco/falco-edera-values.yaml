@@ -1,0 +1,73 @@
+# Falco Helm values for Edera zone monitoring
+# See: https://docs.edera.dev/guides/observability/falco-integration/
+
+# Mount Edera plugin and daemon socket from host into Falco pods
+mounts:
+  volumes:
+    - name: edera-plugin
+      hostPath:
+        path: /var/lib/edera/protect/falco
+    - name: edera-daemon-socket
+      hostPath:
+        path: /var/lib/edera/protect
+
+  volumeMounts:
+    - name: edera-plugin
+      mountPath: /var/lib/edera/protect/falco
+      readOnly: true
+    - name: edera-daemon-socket
+      mountPath: /var/lib/edera/protect
+      readOnly: false
+
+# Configure the Edera plugin
+falco:
+  plugins:
+    - name: edera
+      library_path: /var/lib/edera/protect/falco/libedera_falco_plugin.so
+      init_config:
+        mirror_host_syscalls: true
+
+  load_plugins: [edera]
+
+# Add custom Edera detection rules
+customRules:
+  edera-rules.yaml: |-
+    - macro: open_read_edera
+      condition: (evt.pluginname == "edera")
+
+    - rule: Edera Events
+      desc: >
+        Logs every syscall event from every running Edera zone, with no filtering.
+        Useful for testing and understanding what events are available.
+      source: edera_zone
+      output: >
+        Edera Event | time=%evt.time zone_id=%edera.zone.id evt.type=%evt.type
+        syscall.type=%syscall.type evt.category=%evt.category evt.dir=%evt.dir
+        proc.exe=%proc.exe evt.args=%evt.args is_open=%evt.type.is[open]
+      priority: WARNING
+      tags: [edera_zone, filesystem]
+      condition: >
+        open_read_edera
+
+    - rule: Edera Sensitive File Read
+      desc: Detects when a process in an Edera zone reads sensitive files
+      source: edera_zone
+      output: >
+        Sensitive file read in zone | zone_id=%edera.zone.id proc=%proc.exe
+        file=%fd.name
+      priority: WARNING
+      condition: >
+        evt.pluginname == "edera" and
+        evt.type == open and
+        (fd.name startswith /etc/shadow or fd.name startswith /etc/passwd)
+
+    - rule: Edera Process Execution
+      desc: Logs all process executions inside Edera zones
+      source: edera_zone
+      output: >
+        Process executed in zone | zone_id=%edera.zone.id proc=%proc.exe
+        cmdline=%proc.cmdline
+      priority: NOTICE
+      condition: >
+        evt.pluginname == "edera" and
+        evt.type == execve

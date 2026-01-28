@@ -1,0 +1,18 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: assign-edera-runtime
+spec:
+  rules:
+  - name: assign-runtime-class
+    match:
+      resources:
+        kinds:
+        - Pod
+        namespaces:
+        - production
+        - secure-workloads
+    mutate:
+      patchStrategicMerge:
+        spec:
+          runtimeClassName: edera
