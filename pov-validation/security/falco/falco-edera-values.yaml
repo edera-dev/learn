@@ -25,49 +25,31 @@ falco:
     - name: edera
       library_path: /var/lib/edera/protect/falco/libedera_falco_plugin.so
       init_config:
-        mirror_host_syscalls: true
+        mirror_host_syscalls: false
 
   load_plugins: [edera]
 
 # Add custom Edera detection rules
 customRules:
   edera-rules.yaml: |-
-    - macro: open_read_edera
-      condition: (evt.pluginname == "edera")
-
-    - rule: Edera Events
-      desc: >
-        Logs every syscall event from every running Edera zone, with no filtering.
-        Useful for testing and understanding what events are available.
+    - rule: Edera Zone Activity
+      desc: Detects file access inside Edera zones
       source: edera_zone
       output: >
-        Edera Event | time=%evt.time zone_id=%edera.zone.id evt.type=%evt.type
-        syscall.type=%syscall.type evt.category=%evt.category evt.dir=%evt.dir
-        proc.exe=%proc.exe evt.args=%evt.args is_open=%evt.type.is[open]
-      priority: WARNING
-      tags: [edera_zone, filesystem]
-      condition: >
-        open_read_edera
-
-    - rule: Edera Sensitive File Read
-      desc: Detects when a process in an Edera zone reads sensitive files
-      source: edera_zone
-      output: >
-        Sensitive file read in zone | zone_id=%edera.zone.id proc=%proc.exe
-        file=%fd.name
-      priority: WARNING
+        Zone file access | zone_id=%edera.zone.id proc=%proc.exe
+        evt.type=%evt.type evt.args=%evt.args
+      priority: DEBUG
       condition: >
         evt.pluginname == "edera" and
-        evt.type == open and
-        (fd.name startswith /etc/shadow or fd.name startswith /etc/passwd)
+        evt.type == open
 
     - rule: Edera Process Execution
-      desc: Logs all process executions inside Edera zones
+      desc: Detects process execution inside Edera zones
       source: edera_zone
       output: >
         Process executed in zone | zone_id=%edera.zone.id proc=%proc.exe
         cmdline=%proc.cmdline
-      priority: NOTICE
+      priority: WARNING
       condition: >
         evt.pluginname == "edera" and
         evt.type == execve
