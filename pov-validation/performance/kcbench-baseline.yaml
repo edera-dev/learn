@@ -1,0 +1,49 @@
+# CPU benchmark baseline (without Edera) using kcbench (kernel compilation)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kcbench-baseline
+spec:
+  template:
+    spec:
+      # No runtimeClassName - uses default runtime
+      restartPolicy: Never
+      volumes:
+      - name: workspace
+        emptyDir:
+          sizeLimit: 15Gi
+      containers:
+      - name: kcbench
+        image: mirror.gcr.io/library/fedora:latest
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "=== Baseline CPU Benchmark (kcbench) ==="
+
+            # Use workspace volume for all disk-heavy operations
+            export TMPDIR=/workspace/tmp
+            mkdir -p /workspace/tmp /workspace/dnf-cache
+
+            echo "Installing dependencies..."
+            dnf install -y --setopt=cachedir=/workspace/dnf-cache kcbench diffutils openssl openssl-devel-engine cpio
+
+            echo ""
+            echo "Running kernel compilation benchmark (kernel 6.11.3)..."
+            echo "This will take several minutes..."
+
+            # Run kcbench with work directory in workspace
+            cd /workspace
+            kcbench -i 1 -j $(nproc) -s 6.11.3
+
+            echo ""
+            echo "=== Benchmark Complete ==="
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+          limits:
+            memory: "4Gi"
+            cpu: "2"

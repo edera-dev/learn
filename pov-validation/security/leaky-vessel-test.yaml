@@ -1,0 +1,36 @@
+# Leaky Vessel demonstration - shows Edera's process isolation
+# This creates a "raider" pod that attempts to access secrets from other pods
+
+---
+# Vulnerable pod WITHOUT Edera - secrets can be accessed via /proc
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vulnerable-pod
+spec:
+  containers:
+  - name: vulnerable-container
+    image: busybox
+    env:
+    - name: PASSWORD
+      value: superSecretPassword
+    - name: SECRET
+      value: reallyVeryImportantSecret
+    command: ["/bin/sh", "-c"]
+    args: ["while true; do sleep 5; done"]
+---
+# Raider pod - uses hostPID to access other pods' processes
+apiVersion: v1
+kind: Pod
+metadata:
+  name: raider
+spec:
+  hostPID: true
+  containers:
+  - name: raider
+    image: ubuntu:24.04
+    command: ["/bin/sh", "-c"]
+    args: ["while true; do sleep 10; done"]
+    securityContext:
+      privileged: true
+    tty: true

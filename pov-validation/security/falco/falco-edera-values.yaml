@@ -1,0 +1,55 @@
+# Falco Helm values for Edera zone monitoring
+# See: https://docs.edera.dev/guides/observability/falco-integration/
+
+# Mount Edera plugin and daemon socket from host into Falco pods
+mounts:
+  volumes:
+    - name: edera-plugin
+      hostPath:
+        path: /var/lib/edera/protect/falco
+    - name: edera-daemon-socket
+      hostPath:
+        path: /var/lib/edera/protect
+
+  volumeMounts:
+    - name: edera-plugin
+      mountPath: /var/lib/edera/protect/falco
+      readOnly: true
+    - name: edera-daemon-socket
+      mountPath: /var/lib/edera/protect
+      readOnly: false
+
+# Configure the Edera plugin
+falco:
+  plugins:
+    - name: edera
+      library_path: /var/lib/edera/protect/falco/libedera_falco_plugin.so
+      init_config:
+        mirror_host_syscalls: false
+
+  load_plugins: [edera]
+
+# Add custom Edera detection rules
+customRules:
+  edera-rules.yaml: |-
+    - rule: Edera Zone Activity
+      desc: Detects file access inside Edera zones
+      source: edera_zone
+      output: >
+        Zone file access | zone_id=%edera.zone.id proc=%proc.exe
+        evt.type=%evt.type evt.args=%evt.args
+      priority: DEBUG
+      condition: >
+        evt.pluginname == "edera" and
+        evt.type == open
+
+    - rule: Edera Process Execution
+      desc: Detects process execution inside Edera zones
+      source: edera_zone
+      output: >
+        Process executed in zone | zone_id=%edera.zone.id proc=%proc.exe
+        cmdline=%proc.cmdline
+      priority: WARNING
+      condition: >
+        evt.pluginname == "edera" and
+        evt.type == execve

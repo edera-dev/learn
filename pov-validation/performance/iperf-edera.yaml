@@ -1,0 +1,16 @@
+# iperf benchmark with Edera - client and server in same pod (same zone)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iperf-edera
+spec:
+  runtimeClassName: edera
+  containers:
+  - name: iperf-server
+    image: networkstatic/iperf3:latest
+    command: ["iperf3", "-s"]
+    ports:
+    - containerPort: 5201
+  - name: iperf-client
+    image: networkstatic/iperf3:latest
+    command: ["sleep", "3600"]
