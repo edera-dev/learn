@@ -14,19 +14,23 @@ spec:
     port: 3035
     targetPort: 3035
 ---
-# Endpoints must be created manually with Edera node IPs
+# EndpointSlice must be created manually with Edera node IPs
 # Replace NODE_IP with your Edera node's internal IP
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
-  name: edera-protect-metrics
+  name: edera-protect-metrics-1
   namespace: monitoring
-subsets:
+  labels:
+    kubernetes.io/service-name: edera-protect-metrics
+addressType: IPv4
+ports:
+- name: metrics
+  port: 3035
+  protocol: TCP
+endpoints:
 - addresses:
-  - ip: NODE_IP  # Replace with: kubectl get nodes -l runtime=edera -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
-  ports:
-  - name: metrics
-    port: 3035
+  - "NODE_IP"  # Replace with: kubectl get nodes -l runtime=edera -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
