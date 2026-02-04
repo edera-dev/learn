@@ -31,6 +31,12 @@ Before using any examples, ensure you have:
 |---------|-------------|----------|----------------|
 | [EKS with Terraform](./getting-started/eks-terraform/) | Complete EKS cluster with Edera protection using Terraform | AWS | ~15 minutes |
 
+### AI Agents
+
+| Example | Description | Platform |
+|---------|-------------|----------|
+| [Claude Code](./ai-agents/claude-code/) | Run AI coding agents with per-workload kernel isolation | Kubernetes |
+
 ## 🛡️ Region Support
 
 Edera AMIs are currently available in:

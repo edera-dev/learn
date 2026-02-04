@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: claude-code
+  labels:
+    app: claude-code
+spec:
+  runtimeClassName: edera
+  containers:
+  - name: claude
+    image: ghcr.io/your-org/claude-code:latest  # Replace with your image
+    imagePullPolicy: Always
+    command: ["tail", "-f", "/dev/null"]
+    env:
+    - name: PATH
+      value: "/usr/local/cargo/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    - name: GOPATH
+      value: "/root/go"
+    - name: CARGO_HOME
+      value: "/usr/local/cargo"
+    - name: RUSTUP_HOME
+      value: "/usr/local/rustup"
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+    - name: claude-config
+      mountPath: /root/.claude
+    workingDir: /workspace
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "8Gi"
+        cpu: "4"
+  volumes:
+  - name: workspace
+    emptyDir: {}
+  - name: claude-config
+    emptyDir: {}
+  restartPolicy: Never
