@@ -1,6 +1,6 @@
-# POV Validation Test Suite
+# Edera Validation Test Suite
 
-Structured testing framework for validating Edera's security, performance, and operational capabilities during proof of value (POV) evaluations.
+Structured testing framework for validating Edera's security, performance, and operational capabilities.
 
 ## Prerequisites
 
@@ -80,12 +80,12 @@ make clean
 
 ## Documentation
 
-For detailed test procedures and expected results, see the [POV Validation Guide](https://docs.edera.dev/guides/pov-validation/).
+For detailed test procedures and expected results, see the [Validation Guide](https://docs.edera.dev/guides/validate/).
 
 ## File Structure
 
 ```
-pov-validation/
+validate/
 ├── Makefile
 ├── README.md
 ├── security/
