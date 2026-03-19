@@ -1,0 +1,78 @@
+# Debug pod for kcbench
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kcbench-debug
+spec:
+  runtimeClassName: edera
+  restartPolicy: Never
+  volumes:
+  - name: workspace
+    emptyDir:
+      sizeLimit: 15Gi
+  containers:
+  - name: kcbench
+    image: ttl.sh/kcbench-prebuilt:24h
+    command: ["/bin/bash", "-c"]
+    args:
+      - |
+        echo "=== Debug kcbench ==="
+        echo ""
+        echo "Disk space:"
+        df -h
+        echo ""
+        echo "Memory:"
+        free -h
+        echo ""
+        echo "Checking kcbench:"
+        which kcbench
+        ls -la /usr/local/bin/kcbench
+        echo ""
+        echo "Checking kernel source:"
+        ls -la /usr/share/kcbench/
+        echo ""
+
+        # Force all temp operations to workspace volume
+        mkdir -p /workspace/tmp
+        rm -rf /tmp 2>/dev/null || true
+        ln -sf /workspace/tmp /tmp
+        export TMPDIR=/workspace/tmp
+        export HOME=/workspace
+
+        # Manual kernel compile benchmark (bypassing kcbench download issues)
+        echo "Extracting pre-downloaded kernel source..."
+        cd /workspace
+        tar -xf /usr/share/kcbench/linux-6.6.70.tar.xz
+        cd linux-6.6.70
+
+        echo ""
+        echo "Configuring kernel (defconfig)..."
+        make defconfig
+
+        echo ""
+        echo "Starting kernel compilation benchmark..."
+        echo "CPUs: $(nproc), using -j2"
+        echo ""
+
+        START=$(date +%s.%N)
+        make -j2 2>&1 | tail -20
+        END=$(date +%s.%N)
+
+        ELAPSED=$(echo "$END - $START" | bc)
+        echo ""
+        echo "=== Results ==="
+        echo "Compile time: ${ELAPSED} seconds"
+        echo "==============="
+        echo ""
+        echo "=== Done ==="
+        sleep 3600
+    volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "2"
+      limits:
+        memory: "4Gi"
+        cpu: "2"

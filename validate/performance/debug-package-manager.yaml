@@ -1,0 +1,59 @@
+# Debug pod to investigate package manager failures in Edera zones
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pkg
+spec:
+  runtimeClassName: edera
+  restartPolicy: Never
+  containers:
+  - name: debug
+    image: ubuntu:24.04
+    command: ["/bin/bash", "-c"]
+    args:
+      - |
+        set -x
+        echo "=== Debug: Package Manager in Edera Zone ==="
+        echo ""
+
+        echo "--- System Info ---"
+        uname -a
+        cat /etc/os-release | head -5
+        echo ""
+
+        echo "--- Memory ---"
+        free -h
+        echo ""
+
+        echo "--- Disk Space ---"
+        df -h
+        echo ""
+
+        echo "--- DNS Resolution ---"
+        cat /etc/resolv.conf
+        echo ""
+        nslookup archive.ubuntu.com || echo "nslookup failed"
+        echo ""
+
+        echo "--- Network Test ---"
+        apt-get update -o Debug::Acquire::http=true 2>&1 | head -100
+        APT_EXIT=$?
+        echo ""
+        echo "apt-get update exit code: $APT_EXIT"
+        echo ""
+
+        echo "--- Checking for OOM or signals ---"
+        dmesg 2>/dev/null | tail -20 || echo "dmesg not available"
+        echo ""
+
+        echo "=== Debug Complete ==="
+
+        # Keep pod alive for inspection
+        sleep 3600
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "1"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
