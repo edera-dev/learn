@@ -34,7 +34,7 @@ kyverno-install:
 	@echo ""
 	@echo "Kyverno installed. Waiting for webhook to be ready..."
 	kubectl wait --for=condition=ready pod \
-		-l app.kubernetes.io/name=kyverno \
+		-l app.kubernetes.io/component=admission-controller \
 		-n kyverno \
 		--timeout=120s
 	@echo "Kyverno ready."

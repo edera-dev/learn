@@ -36,13 +36,13 @@ spec:
       deny:
         conditions:
           any:
-          - key: "{{ request.object.spec.hostNetwork }}"
+          - key: "{{ request.object.spec.hostNetwork || false }}"
             operator: Equals
             value: true
-          - key: "{{ request.object.spec.hostPID }}"
+          - key: "{{ request.object.spec.hostPID || false }}"
             operator: Equals
             value: true
-          - key: "{{ request.object.spec.hostIPC }}"
+          - key: "{{ request.object.spec.hostIPC || false }}"
             operator: Equals
             value: true
 
@@ -53,11 +53,15 @@ spec:
           kinds: ["Pod"]
     validate:
       message: "Privileged containers are not permitted by default."
-      pattern:
-        spec:
-          containers:
-          - =(securityContext):
-              =(privileged): "false | !exists(@)"
+      deny:
+        conditions:
+          any:
+          - key: "{{ request.object.spec.containers[?securityContext.privileged == `true`] | length(@) }}"
+            operator: GreaterThan
+            value: "0"
+          - key: "{{ request.object.spec.initContainers || `[]` | [?securityContext.privileged == `true`] | length(@) }}"
+            operator: GreaterThan
+            value: "0"
 
   - name: require-drop-all-capabilities
     match:
