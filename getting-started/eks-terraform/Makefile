@@ -1,4 +1,6 @@
-.PHONY: help plan deploy test verify clean destroy delete
+.PHONY: help plan deploy test verify harden harden-clean clean destroy delete
+
+HARDEN_DIR ?= ../../harden
 
 # Auto-detect Terraform or OpenTofu
 TF_TOOL := $(shell which terraform 2>/dev/null || which tofu 2>/dev/null)
@@ -9,13 +11,15 @@ endif
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  plan     - Plan the Terraform/OpenTofu deployment"
-	@echo "  deploy   - Deploy the EKS cluster with Edera"
-	@echo "  test     - Test the deployment by creating a test workload"
-	@echo "  verify   - Verify the cluster and nodes are properly configured"
-	@echo "  clean    - Clean up test resources"
-	@echo "  destroy  - Destroy the entire infrastructure"
-	@echo "  delete   - Alias for destroy (same as destroy)"
+	@echo "  plan          - Plan the Terraform/OpenTofu deployment"
+	@echo "  deploy        - Deploy the EKS cluster with Edera"
+	@echo "  test          - Test the deployment by creating a test workload"
+	@echo "  verify        - Verify the cluster and nodes are properly configured"
+	@echo "  harden        - Apply production hardening policies (Kyverno + NetworkPolicy)"
+	@echo "  harden-clean  - Remove hardening resources"
+	@echo "  clean         - Clean up test resources"
+	@echo "  destroy       - Destroy the entire infrastructure"
+	@echo "  delete        - Alias for destroy (same as destroy)"
 	@echo ""
 	@echo "Using: $(shell basename $(TF_TOOL)) ($(TF_TOOL))"
 	@echo ""
@@ -111,6 +115,15 @@ verify:
 	@echo ""
 	@echo "AMI information:"
 	@./scripts/verify-ami.sh
+
+# Apply production hardening: Kyverno policies + NetworkPolicy + verify
+harden:
+	@echo "Applying production hardening to this cluster..."
+	$(MAKE) -C $(HARDEN_DIR) e2e
+
+# Remove hardening resources
+harden-clean:
+	$(MAKE) -C $(HARDEN_DIR) e2e-clean
 
 # Clean up test resources only
 clean:
