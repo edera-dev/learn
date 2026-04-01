@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ai-agent
+  annotations:
+    # Pin zone kernel to latest for automatic security patching.
+    # Use a specific version tag if your environment requires pinned versions.
+    dev.edera/kernel: "ghcr.io/edera-dev/zone-kernel:latest"
+spec:
+  runtimeClassName: edera
+  # Agents that don't need Kubernetes API access should not mount a token.
+  automountServiceAccountToken: false
+  containers:
+  - name: agent
+    # Replace with your agent image
+    image: your-registry/your-agent-image:latest
+    securityContext:
+      # Privileged adds /dev/mem, Xen device access, and all capabilities inside
+      # the zone. Non-privileged pods reduce the attack surface for future exploits.
+      privileged: false
+      capabilities:
+        drop: ["ALL"]
+      # Prevents in-zone persistence: malware cannot write to disk and survive.
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    resources:
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+  # Never auto-restart a potentially compromised agent.
+  # Investigate before redeploying.
+  restartPolicy: Never
