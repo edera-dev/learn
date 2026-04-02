@@ -1,4 +1,4 @@
-.PHONY: help setup security-test performance-test operations-test clean
+.PHONY: help setup security-test performance-test operations-test clean cpu-bench cpu-bench-baseline clean-cpu-bench membench membench-baseline clean-membench
 
 help:
 	@echo "POV Validation Test Suite"
@@ -22,6 +22,10 @@ help:
 	@echo "  make sysbench-compare   - Run sysbench with comparison table"
 	@echo "  make kcbench            - Run kcbench CPU benchmark (kernel compile)"
 	@echo "  make kcbench-baseline   - Run kcbench baseline (without Edera)"
+	@echo "  make cpu-bench          - Deploy CPU benchmark pod (Edera)"
+	@echo "  make cpu-bench-baseline - Deploy CPU benchmark pod (baseline)"
+	@echo "  make membench           - Deploy memory benchmark pod (Edera)"
+	@echo "  make membench-baseline  - Deploy memory benchmark pod (baseline)"
 	@echo ""
 	@echo "Operations Tests:"
 	@echo "  make grafana-install    - Install Prometheus/Grafana stack"
@@ -214,6 +218,30 @@ kcbench-baseline:
 	@echo ""
 	kubectl logs job/kcbench-baseline
 
+# CPU Benchmarking
+cpu-bench:
+	kubectl apply -f performance/bench-edera.yaml
+	kubectl wait --for=condition=Ready pod/bench-edera --timeout=120s
+
+cpu-bench-baseline:
+	kubectl apply -f performance/bench-baseline.yaml
+	kubectl wait --for=condition=Ready pod/bench-baseline --timeout=120s
+
+clean-cpu-bench:
+	-kubectl delete pod bench-edera bench-baseline --ignore-not-found
+
+# Memory Benchmarking
+membench:
+	kubectl apply -f performance/membench-edera.yaml
+	kubectl wait --for=condition=Ready pod/membench-edera --timeout=120s
+
+membench-baseline:
+	kubectl apply -f performance/membench-baseline.yaml
+	kubectl wait --for=condition=Ready pod/membench-baseline --timeout=120s
+
+clean-membench:
+	-kubectl delete pod membench-edera membench-baseline --ignore-not-found
+
 # Operations Tests
 grafana-install:
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -262,5 +290,5 @@ clean-operations:
 	-helm uninstall prometheus -n monitoring
 	-kubectl delete namespace monitoring
 
-clean: clean-security clean-performance clean-operations
+clean: clean-security clean-performance clean-operations clean-cpu-bench clean-membench
 	@echo "All POV test resources removed"
