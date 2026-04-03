@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: REPLACE_WITH_NAMESPACE
+  annotations:
+    description: >-
+      Default-deny egress for Edera tenant namespaces. Allows only DNS and
+      intra-namespace pod communication. Apply to all tenant namespaces before
+      adding workload-specific allow rules.
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+  # Allow pod-to-pod communication within this namespace
+  - to:
+    - podSelector: {}

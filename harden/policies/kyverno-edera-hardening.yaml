@@ -1,0 +1,107 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: edera-hardening
+  annotations:
+    policies.kyverno.io/title: Edera hardening policy
+    policies.kyverno.io/description: >-
+      Denies pod configurations that weaken Edera zone isolation. Blocks hostPath,
+      host namespaces, and requires capabilities to be dropped. Required for any
+      multi-tenant or AI-agent deployment.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: deny-hostpath
+    match:
+      any:
+      - resources:
+          kinds: ["Pod"]
+    validate:
+      message: "hostPath volumes are not permitted. There is no safe way to use hostPath with untrusted workloads."
+      deny:
+        conditions:
+          any:
+          - key: "{{ request.object.spec.volumes[].hostPath | length(@) }}"
+            operator: GreaterThan
+            value: "0"
+
+  - name: deny-host-namespaces
+    match:
+      any:
+      - resources:
+          kinds: ["Pod"]
+    validate:
+      message: "hostNetwork, hostPID, and hostIPC are not permitted."
+      deny:
+        conditions:
+          any:
+          - key: "{{ request.object.spec.hostNetwork || false }}"
+            operator: Equals
+            value: true
+          - key: "{{ request.object.spec.hostPID || false }}"
+            operator: Equals
+            value: true
+          - key: "{{ request.object.spec.hostIPC || false }}"
+            operator: Equals
+            value: true
+
+  - name: deny-privileged
+    match:
+      any:
+      - resources:
+          kinds: ["Pod"]
+    validate:
+      message: "Privileged containers are not permitted by default."
+      deny:
+        conditions:
+          any:
+          - key: "{{ request.object.spec.containers[?securityContext.privileged == `true`] | length(@) }}"
+            operator: GreaterThan
+            value: "0"
+          - key: "{{ request.object.spec.initContainers || `[]` | [?securityContext.privileged == `true`] | length(@) }}"
+            operator: GreaterThan
+            value: "0"
+
+  - name: require-drop-all-capabilities
+    match:
+      any:
+      - resources:
+          kinds: ["Pod"]
+    validate:
+      message: "Containers must drop ALL capabilities."
+      pattern:
+        spec:
+          containers:
+          - securityContext:
+              capabilities:
+                drop: ["ALL"]
+
+  - name: restrict-volume-types
+    match:
+      any:
+      - resources:
+          kinds: ["Pod"]
+    validate:
+      message: "Only configMap, secret, emptyDir, projected, downwardAPI, and PVC volumes are permitted."
+      deny:
+        conditions:
+          any:
+          - key: "{{ request.object.spec.volumes[].keys(@)[] }}"
+            operator: AnyIn
+            value:
+            - hostPath
+            - nfs
+            - iscsi
+            - fc
+            - glusterfs
+            - rbd
+            - cephfs
+            - flocker
+            - azureFile
+            - vsphereVolume
+            - quobyte
+            - azureDisk
+            - portworxVolume
+            - scaleIO
+            - storageos
