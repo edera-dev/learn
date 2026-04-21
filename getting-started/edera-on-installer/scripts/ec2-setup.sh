@@ -354,7 +354,7 @@ launch_instance() {
         --security-group-ids "$SG_ID" \
         --subnet-id "$SUBNET_ID" \
         --associate-public-ip-address \
-        --block-device-mappings "[{\"DeviceName\":\"${ROOT_DEVICE}\",\"Ebs\":{\"VolumeSize\":30,\"VolumeType\":\"gp3\"}}]" \
+        --block-device-mappings "[{\"DeviceName\":\"${ROOT_DEVICE}\",\"Ebs\":{\"VolumeSize\":20,\"VolumeType\":\"gp3\"}}]" \
         --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${INSTANCE_NAME}}]" \
         --query "Instances[0].InstanceId" \
         --output text)

@@ -147,6 +147,18 @@ check_uefi() {
     ok "Boot: UEFI"
 }
 
+check_nftables() {
+    if ! command -v nft &>/dev/null; then
+        err "nftables is not installed — this is required by the Edera hypervisor"
+        case "$ID" in
+            ubuntu) printf "    sudo apt-get install -y nftables\n" ;;
+            *)      printf "    sudo dnf install -y nftables\n" ;;
+        esac
+        exit 1
+    fi
+    ok "nftables is installed"
+}
+
 check_runtime() {
     if ! command -v "$RUNTIME" &>/dev/null; then
         err "$RUNTIME is not installed — this is required to run the installer"
@@ -247,6 +259,7 @@ main() {
     header "Checking system requirements"
     detect_os
     check_uefi
+    check_nftables
     check_runtime
 
     run_preinstall_check
