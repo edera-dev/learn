@@ -172,7 +172,7 @@ cleanup_security_group() {
     ok "Instance terminated"
 
     aws ec2 delete-security-group \
-        --group-id "$SG_ID"
+        --group-id "$SG_ID" > /dev/null
     ok "Security group deleted: ${SG_ID}"
 }
 

@@ -147,18 +147,6 @@ check_uefi() {
     ok "Boot: UEFI"
 }
 
-check_nftables() {
-    if ! command -v nft &>/dev/null; then
-        err "nftables is not installed — this is required by the Edera hypervisor"
-        case "$ID" in
-            ubuntu) printf "    sudo apt-get install -y nftables\n" ;;
-            *)      printf "    sudo dnf install -y nftables\n" ;;
-        esac
-        exit 1
-    fi
-    ok "nftables is installed"
-}
-
 check_runtime() {
     if ! command -v "$RUNTIME" &>/dev/null; then
         err "$RUNTIME is not installed — this is required to run the installer"
@@ -167,11 +155,16 @@ check_runtime() {
 
     local runtime_err
     if ! runtime_err=$("$RUNTIME" info 2>&1 >/dev/null); then
-        err "cannot run $RUNTIME — ensure $USER has permission to use $RUNTIME without sudo"
         [[ -n "$runtime_err" ]] && detail "$runtime_err"
-        if [[ "$RUNTIME" == "docker" ]]; then
-            printf "    Add your user to the docker group and start a new session:\n"
-            printf "      sudo usermod -aG docker \$USER\n"
+        if [[ "$RUNTIME" == "docker" ]] && grep -q "Is the docker daemon running" <<< "$runtime_err"; then
+            err "docker daemon is not running — start it with:"
+            printf "      sudo systemctl start docker\n"
+        else
+            err "cannot run $RUNTIME — ensure $USER has permission to use $RUNTIME without sudo"
+            if [[ "$RUNTIME" == "docker" ]]; then
+                printf "    Add your user to the docker group and start a new session:\n"
+                printf "      sudo usermod -aG docker \$USER\n"
+            fi
         fi
         exit 1
     fi
@@ -259,7 +252,6 @@ main() {
     header "Checking system requirements"
     detect_os
     check_uefi
-    check_nftables
     check_runtime
 
     run_preinstall_check
