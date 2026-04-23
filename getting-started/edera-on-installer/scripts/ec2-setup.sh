@@ -215,9 +215,23 @@ check_key_pair() {
             exit 1
         fi
         if [[ -z "$KEY_EXISTS" || "$KEY_EXISTS" == "None" ]]; then
-            err "key pair '${KEY_NAME}' not found in AWS (region: ${EFFECTIVE_REGION})"
-            detail "to import your existing key: aws ec2 import-key-pair --key-name ${KEY_NAME} --public-key-material fileb://<path-to-public-key>"
-            exit 1
+            warn "key pair '${KEY_NAME}' found locally but not in AWS (region: ${EFFECTIVE_REGION})"
+            if ! ssh-keygen -y -f "$KEY_FILE" &>/dev/null; then
+                err "could not read public key from ${KEY_FILE}"
+                detail "to import manually: ssh-keygen -y -f ${KEY_FILE} > /tmp/key.pub && aws ec2 import-key-pair --key-name ${KEY_NAME} --public-key-material fileb:///tmp/key.pub"
+                exit 1
+            fi
+            if ! prompt "    Import ${KEY_FILE} to AWS as key pair '${KEY_NAME}'?" always; then
+                err "aborted — re-run with --key-name to specify an existing key pair"
+                exit 1
+            fi
+            PUBKEY_TMPFILE=$(mktemp)
+            ssh-keygen -y -f "$KEY_FILE" > "$PUBKEY_TMPFILE"
+            aws ec2 import-key-pair \
+                --key-name "$KEY_NAME" \
+                --public-key-material "fileb://${PUBKEY_TMPFILE}" > /dev/null
+            rm -f "$PUBKEY_TMPFILE"
+            ok "Key pair imported to AWS: ${KEY_NAME}"
         fi
         ok "Key pair: ${KEY_NAME} (${KEY_FILE})"
     elif [[ -z "$KEY_EXISTS" || "$KEY_EXISTS" == "None" ]]; then

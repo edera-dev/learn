@@ -2,6 +2,7 @@
 set -euo pipefail
 
 INSTANCE_NAME="ederaon-test"
+KEY_NAME="edera-key"
 KEEP_SG=false
 REGION=""
 ASSUME_YES=false
@@ -131,10 +132,13 @@ check_credentials() {
 terminate_instance() {
     header "Terminating instance"
 
-    INSTANCE_ID=$(aws ec2 describe-instances \
+    local instance_info
+    instance_info=$(aws ec2 describe-instances \
         --filters "Name=tag:Name,Values=${INSTANCE_NAME}" "Name=instance-state-name,Values=running,pending,stopping,stopped" \
-        --query "Reservations[0].Instances[0].InstanceId" \
+        --query "Reservations[0].Instances[0].[InstanceId, KeyName]" \
         --output text)
+    INSTANCE_ID=$(awk '{print $1}' <<< "$instance_info")
+    INSTANCE_KEY_NAME=$(awk '{print $2}' <<< "$instance_info")
 
     if [[ "$INSTANCE_ID" == "None" || -z "$INSTANCE_ID" ]]; then
         err "no instance named '${INSTANCE_NAME}' found"
@@ -176,12 +180,51 @@ cleanup_security_group() {
     ok "Security group deleted: ${SG_ID}"
 }
 
+# ── Key pair cleanup ──────────────────────────────────────────────────────────
+cleanup_key_pair() {
+    if [[ "$INSTANCE_KEY_NAME" != "$KEY_NAME" ]]; then
+        return 0
+    fi
+
+    KEY_EXISTS=$(aws ec2 describe-key-pairs \
+        --key-names "$KEY_NAME" \
+        --query "KeyPairs[0].KeyName" \
+        --output text 2>/dev/null || echo "")
+
+    if [[ -z "$KEY_EXISTS" || "$KEY_EXISTS" == "None" ]]; then
+        return 0
+    fi
+
+    header "Cleaning up key pair"
+
+    if ! prompt "    Delete key pair '${KEY_NAME}' from AWS?"; then
+        ok "Key pair kept in AWS: ${KEY_NAME}"
+        return 0
+    fi
+
+    aws ec2 delete-key-pair --key-name "$KEY_NAME" > /dev/null
+    ok "Key pair deleted from AWS: ${KEY_NAME}"
+
+    for candidate in "${HOME}/.ssh/${KEY_NAME}" "${HOME}/.ssh/${KEY_NAME}.pem" "${HOME}/.ssh/${KEY_NAME}.key"; do
+        if [[ -f "$candidate" ]]; then
+            if prompt "    Delete local key file '${candidate}'?"; then
+                rm -f "$candidate"
+                ok "Local key file deleted: ${candidate}"
+            else
+                ok "Local key file kept: ${candidate}"
+            fi
+            break
+        fi
+    done
+}
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 main() {
     setup_colors
     parse_args "$@"
 
     SG_NAME="${INSTANCE_NAME}-sg"
+    INSTANCE_KEY_NAME=""
 
     check_credentials
 
@@ -192,6 +235,8 @@ main() {
     if [[ "$KEEP_SG" == false ]]; then
         cleanup_security_group
     fi
+
+    cleanup_key_pair
 
     printf "\n${GREEN}${BOLD}Done.${RESET}\n\n"
 }
