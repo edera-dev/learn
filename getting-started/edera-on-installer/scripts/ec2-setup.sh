@@ -14,11 +14,12 @@ setup_colors() {
         RED=$'\033[0;31m'
         GREEN=$'\033[0;32m'
         YELLOW=$'\033[1;33m'
+        CYAN=$'\033[1;36m'
         BOLD=$'\033[1m'
         DIM=$'\033[2m'
         RESET=$'\033[0m'
     else
-        RED='' GREEN='' YELLOW='' BOLD='' DIM='' RESET=''
+        RED='' GREEN='' YELLOW='' CYAN='' BOLD='' DIM='' RESET=''
     fi
 }
 
@@ -132,10 +133,10 @@ prompt() {
     fi
     local reply
     if [[ -t 0 ]]; then
-        printf "%s [y/N] " "$msg"
+        printf "${CYAN}%s${RESET} [y/N] " "$msg"
         read -r reply
     elif [[ -r /dev/tty ]]; then
-        printf "%s [y/N] " "$msg"
+        printf "${CYAN}%s${RESET} [y/N] " "$msg"
         read -r reply < /dev/tty
     else
         return 1
