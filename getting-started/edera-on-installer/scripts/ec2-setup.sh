@@ -391,7 +391,7 @@ launch_instance() {
 # ── Dependencies ──────────────────────────────────────────────────────────────
 install_dependencies() {
     printf "\n"
-    if ! prompt "Install dependencies (${RUNTIME}, nftables) now?"; then
+    if ! prompt "Proceed with installing dependencies (${RUNTIME}, nftables)?"; then
         return 0
     fi
 
