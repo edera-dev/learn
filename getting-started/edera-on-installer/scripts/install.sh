@@ -12,11 +12,12 @@ setup_colors() {
         RED=$'\033[0;31m'
         GREEN=$'\033[0;32m'
         YELLOW=$'\033[1;33m'
+        CYAN=$'\033[1;36m'
         BOLD=$'\033[1m'
         DIM=$'\033[2m'
         RESET=$'\033[0m'
     else
-        RED='' GREEN='' YELLOW='' BOLD='' DIM='' RESET=''
+        RED='' GREEN='' YELLOW='' CYAN='' BOLD='' DIM='' RESET=''
     fi
 }
 
@@ -83,11 +84,11 @@ confirm() {
 
     local reply
     if [[ -t 0 ]]; then
-        printf "Proceed with installation? [y/N] "
+        printf "${CYAN}Proceed with installation?${RESET} [y/N] "
         read -r reply
     elif [[ -r /dev/tty ]]; then
         # stdin is piped (e.g. curl | bash); prompt via the controlling tty.
-        printf "Proceed with installation? [y/N] "
+        printf "${CYAN}Proceed with installation?${RESET} [y/N] "
         read -r reply < /dev/tty
     else
         err "cannot prompt for confirmation — no tty available"
