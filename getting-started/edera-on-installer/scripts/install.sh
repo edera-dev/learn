@@ -221,7 +221,8 @@ registry_login() {
 run_installer() {
     header "Installing Edera"
 
-    printf "    The system will reboot when the installer completes.\n\n"
+    printf "    The system will reboot when the installer completes.\n"
+    printf "    Please reconnect via SSH after the host is done rebooting.\n\n"
 
     if [[ "$VERBOSE" == true ]]; then
         $PRIV_RUN run --rm --privileged --pid=host --net=host \
