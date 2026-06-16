@@ -15,6 +15,7 @@ See [AI Agent Sandboxing](https://docs.edera.dev/technical-overview/concepts/ai-
 | Example | Description |
 |---------|-------------|
 | [Claude Code](./claude-code/) | Run Anthropic's Claude Code CLI in an Edera-protected pod |
+| [Code Interpreter](./code-interpreter/) | A coding agent whose `run_python` tool calls execute in Edera-isolated sandboxes via the Agent Sandbox Python SDK |
 
 ## Quick Start
 

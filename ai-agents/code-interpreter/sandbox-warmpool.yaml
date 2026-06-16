@@ -1,0 +1,15 @@
+# A warm pool of ready-to-adopt Python sandboxes built from the template.
+#
+# The Python SDK provisions sandboxes from a SandboxWarmPool (not directly from a
+# SandboxTemplate). Keeping one pre-warmed replica means the agent's first tool
+# call doesn't pay the cold-start cost of scheduling a new Edera zone.
+apiVersion: extensions.agents.x-k8s.io/v1beta1
+kind: SandboxWarmPool
+metadata:
+  name: edera-python-pool
+  namespace: default
+spec:
+  replicas: 1
+  sandboxTemplateRef:
+    # Must match metadata.name in sandbox-template.yaml.
+    name: edera-python-template

@@ -1,0 +1,6 @@
+# The Agent Sandbox controller in this workshop serves the v1beta1 API. The
+# PyPI release of k8s-agent-sandbox (0.4.6) still targets v1alpha1, so install
+# the client from the matching git tag until a v1beta1 release is published.
+k8s-agent-sandbox @ git+https://github.com/kubernetes-sigs/agent-sandbox.git@v0.5.0rc1#subdirectory=clients/python/agentic-sandbox-client
+langchain-anthropic
+langchain-core
