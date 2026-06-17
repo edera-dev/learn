@@ -1,0 +1,140 @@
+# Tenant A's CI runner on Edera. Security-wise the only change from the runc
+# version is runtimeClassName: edera — privileged is now scoped to the VM.
+# Plus a block-mode volume for /var/lib/docker (see manifests/05) so dind can
+# use overlay2; Xen shares normal volumes over 9p, which overlay2 can't use.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ci-runner-edera
+  namespace: tenant-a
+  labels:
+    app: ci-runner
+    tenant: a
+    runtime: edera
+spec:
+  runtimeClassName: edera         # <-- THE FIX (one line!)
+  restartPolicy: OnFailure        # ci-job exits after build; don't restart it
+  containers:
+
+    # --- Docker daemon (privileged — but scoped to the VM) ---
+    - name: dind
+      image: docker:24-dind
+      securityContext:
+        privileged: true
+      command: ["sh", "-c"]
+      args:
+        - |
+          set -e
+          # The block PV arrives as a raw device; format it once and mount it
+          # as Docker's root so Docker uses overlay2 instead of vfs.
+          apk add --no-cache e2fsprogs >/dev/null 2>&1 || true
+          blkid /dev/dind-disk >/dev/null 2>&1 || mkfs.ext4 -F -q /dev/dind-disk
+          mkdir -p /var/lib/docker
+          mount /dev/dind-disk /var/lib/docker
+          mkdir -p /etc/docker
+          cat > /etc/docker/daemon.json <<'JSON'
+          { "storage-driver": "overlay2" }
+          JSON
+          exec dockerd-entrypoint.sh
+      env:
+        - name: DOCKER_TLS_CERTDIR
+          value: ""      
+      resources:
+        limits:
+          memory: "1Gi"
+          cpu: "150m"
+      volumeDevices:
+        - name: dind-storage
+          devicePath: /dev/dind-disk
+
+    # --- CI job (identical to the runc version) ---
+    - name: ci-job
+      image: docker:24
+      env:
+        - name: DOCKER_HOST
+          value: tcp://localhost:2375
+        - name: BUILD_ID
+          value: "demo-42"
+      command: ["sh", "-c"]
+      args:
+        - |
+          set -e
+          PIPELINE_START=$(date +%s)
+
+          echo "=== CI JOB: Waiting for Docker daemon ==="
+          DAEMON_START=$(date +%s)
+          retries=0
+          until docker info >/dev/null 2>&1; do
+            retries=$((retries + 1))
+            if [ $retries -gt 60 ]; then
+              echo "Docker daemon never started"; exit 1
+            fi
+            sleep 1
+          done
+          DAEMON_ELAPSED=$(( $(date +%s) - DAEMON_START ))
+          echo "=== CI JOB: Docker daemon ready (${DAEMON_ELAPSED}s) ==="
+
+          echo ""
+          echo "=== CI JOB: Building tenant-a-api from source ==="
+          BUILD_START=$(date +%s)
+          export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          # ConfigMap mounts use symlinks that docker build can't follow.
+          # Copy to a plain directory first.
+          cp -rL /workspace /tmp/build-context
+
+          docker build \
+            --label "build.id=${BUILD_ID}" \
+            --label "build.time=${BUILD_TIME}" \
+            -t tenant-a-api:${BUILD_ID} \
+            /tmp/build-context
+          BUILD_ELAPSED=$(( $(date +%s) - BUILD_START ))
+          echo ""
+          echo "=== CI JOB: Build complete (${BUILD_ELAPSED}s) ==="
+          docker images tenant-a-api
+
+          echo ""
+          echo "=== CI JOB: Smoke-testing the image ==="
+          SMOKE_START=$(date +%s)
+          docker run -d --name smoketest -p 9090:8080 \
+            -e BUILD_ID="${BUILD_ID}" \
+            -e BUILD_TIME="${BUILD_TIME}" \
+            tenant-a-api:${BUILD_ID}
+          sleep 2
+          echo "Health check:"
+          wget -qO- http://localhost:9090/health && echo ""
+          echo "App response:"
+          wget -qO- http://localhost:9090/ && echo ""
+          docker rm -f smoketest >/dev/null
+          SMOKE_ELAPSED=$(( $(date +%s) - SMOKE_START ))
+
+          PIPELINE_ELAPSED=$(( $(date +%s) - PIPELINE_START ))
+
+          echo ""
+          echo "============================================"
+          echo "  TIMING SUMMARY (runtime: edera)"
+          echo "============================================"
+          echo "  Docker daemon startup:  ${DAEMON_ELAPSED}s"
+          echo "  Image build:            ${BUILD_ELAPSED}s"
+          echo "  Smoke test:             ${SMOKE_ELAPSED}s"
+          echo "  ──────────────────────────────────"
+          echo "  Total pipeline:         ${PIPELINE_ELAPSED}s"
+          echo "============================================"
+          echo ""
+          echo "=== CI JOB: Pipeline complete. ==="
+      volumeMounts:
+        - name: build-source
+          mountPath: /workspace
+      resources:
+        limits:
+          memory: "512Mi"
+          cpu: "100m"
+
+  volumes:
+    - name: dind-storage
+      persistentVolumeClaim:
+        claimName: dind-storage
+    - name: build-source
+      configMap:
+        name: ci-build-source

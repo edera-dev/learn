@@ -1,0 +1,52 @@
+# Tenant B's "production" workload.
+# This pod has secrets and sensitive config that Tenant A should never be
+# able to see. But it can, if Tenant A has a privileged container on runc.
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: victim-db-credentials
+  namespace: tenant-b
+type: Opaque
+stringData:
+  DB_HOST: "prod-db.tenant-b.internal"
+  DB_USER: "admin"
+  DB_PASS: "super-secret-password-do-not-share"
+  API_KEY: "sk-live-TENANT-B-PRODUCTION-KEY-12345"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: victim-app
+  namespace: tenant-b
+  labels:
+    app: victim-app
+    tenant: b
+spec:
+  containers:
+    - name: app
+      image: nginx:alpine
+      volumeMounts:
+        - name: db-credentials
+          mountPath: /etc/db-credentials
+          readOnly: true
+      # Simulate a sensitive file on disk
+      command:
+        - sh
+        - -c
+        - |
+          echo "=== TENANT B CONFIDENTIAL ===" > /tmp/customer-data.csv
+          echo "customer_id,ssn,credit_card" >> /tmp/customer-data.csv
+          echo "1001,123-45-6789,4111-1111-1111-1111" >> /tmp/customer-data.csv
+          echo "1002,987-65-4321,5500-0000-0000-0004" >> /tmp/customer-data.csv
+          echo ""
+          echo "Tenant B app running. This data should be private."
+          nginx -g 'daemon off;'
+      resources:
+        limits:
+          memory: "128Mi"
+          cpu: "50m"
+  volumes:
+    - name: db-credentials
+      secret:
+        secretName: victim-db-credentials

@@ -1,0 +1,39 @@
+# No-CSI workaround: a `local` block PV for Docker storage so dind uses overlay2
+# (Xen shares filesystem volumes over 9p; overlay2 can't use that). Must be
+# `local`, not hostPath — block mode needs a block-capable plugin. Single node,
+# so affinity matches any linux node instead of a hardcoded hostname.
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: dind-block-pv
+spec:
+  capacity:
+    storage: 6Gi
+  volumeMode: Block
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: /dev/dind-disk
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/os
+              operator: In
+              values: ["linux"]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dind-storage
+  namespace: tenant-a
+spec:
+  accessModes: ["ReadWriteOnce"]
+  volumeMode: Block
+  storageClassName: ""
+  volumeName: dind-block-pv
+  resources:
+    requests:
+      storage: 6Gi
