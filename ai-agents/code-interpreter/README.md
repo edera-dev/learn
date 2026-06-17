@@ -37,9 +37,9 @@ created from the `edera-python-template` SandboxTemplate, which sets
 
 ## Prerequisites
 
-- A workshop cluster set up per **[SETUP.md](./SETUP.md)** — a self-contained
-  GCE instance running EderaON, a kubeadm cluster, local block storage, the Agent
-  Sandbox controller + extensions, and the sandbox-router.
+- A workshop cluster set up per **[SETUP.md](./SETUP.md)** — a single-node
+  Kubernetes cluster with EderaON installed, the Edera RuntimeClass, local block
+  storage, and the Agent Sandbox controller + extensions + sandbox-router.
 - `kubectl` configured against that cluster.
 - Python 3.10+ (for the agent and SDK).
 - An `ANTHROPIC_API_KEY` (only for `make run` — `make check` needs no key).
