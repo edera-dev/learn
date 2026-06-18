@@ -1,0 +1,129 @@
+# Tenant A's CI runner — Docker-in-Docker with privileged mode.
+#
+# This mimics a real CI pipeline: a DinD sidecar runs the Docker daemon,
+# and the ci-job container builds an app image from source, then runs it.
+#
+# On the standard runc runtime, the privileged dind container has FULL
+# ACCESS to the underlying node. The escape requires zero exploits.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ci-runner-runc
+  namespace: tenant-a
+  labels:
+    app: ci-runner
+    tenant: a
+    runtime: runc
+spec:
+  # No runtimeClassName → uses the default (runc)
+  restartPolicy: OnFailure        # ci-job exits after build; don't restart it
+  containers:
+
+    # --- Docker daemon (privileged — this is the dangerous part) ---
+    - name: dind
+      image: docker:24-dind
+      securityContext:
+        privileged: true          # <-- THE PROBLEM
+      env:
+        - name: DOCKER_TLS_CERTDIR
+          value: ""
+        - name: DOCKER_DRIVER
+          value: "vfs"      
+      resources:
+        limits:
+          memory: "1Gi"
+          cpu: "150m"
+      volumeMounts:
+        - name: dind-storage
+          mountPath: /var/lib/docker
+
+    # --- CI job (builds an image using the DinD daemon) ---
+    - name: ci-job
+      image: docker:24
+      env:
+        - name: DOCKER_HOST
+          value: tcp://localhost:2375
+        - name: BUILD_ID
+          value: "demo-42"
+      command: ["sh", "-c"]
+      args:
+        - |
+          set -e
+          PIPELINE_START=$(date +%s)
+
+          echo "=== CI JOB: Waiting for Docker daemon ==="
+          DAEMON_START=$(date +%s)
+          retries=0
+          until docker info >/dev/null 2>&1; do
+            retries=$((retries + 1))
+            if [ $retries -gt 60 ]; then
+              echo "Docker daemon never started"; exit 1
+            fi
+            sleep 1
+          done
+          DAEMON_ELAPSED=$(( $(date +%s) - DAEMON_START ))
+          echo "=== CI JOB: Docker daemon ready (${DAEMON_ELAPSED}s) ==="
+
+          echo ""
+          echo "=== CI JOB: Building tenant-a-api from source ==="
+          BUILD_START=$(date +%s)
+          export BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          # ConfigMap mounts use symlinks that docker build can't follow.
+          # Copy to a plain directory first.
+          cp -rL /workspace /tmp/build-context
+
+          docker build \
+            --label "build.id=${BUILD_ID}" \
+            --label "build.time=${BUILD_TIME}" \
+            -t tenant-a-api:${BUILD_ID} \
+            /tmp/build-context
+          BUILD_ELAPSED=$(( $(date +%s) - BUILD_START ))
+          echo ""
+          echo "=== CI JOB: Build complete (${BUILD_ELAPSED}s) ==="
+          docker images tenant-a-api
+
+          echo ""
+          echo "=== CI JOB: Smoke-testing the image ==="
+          SMOKE_START=$(date +%s)
+          docker run -d --name smoketest -p 9090:8080 \
+            -e BUILD_ID="${BUILD_ID}" \
+            -e BUILD_TIME="${BUILD_TIME}" \
+            tenant-a-api:${BUILD_ID}
+          sleep 2
+          echo "Health check:"
+          wget -qO- http://localhost:9090/health && echo ""
+          echo "App response:"
+          wget -qO- http://localhost:9090/ && echo ""
+          docker rm -f smoketest >/dev/null
+          SMOKE_ELAPSED=$(( $(date +%s) - SMOKE_START ))
+
+          PIPELINE_ELAPSED=$(( $(date +%s) - PIPELINE_START ))
+
+          echo ""
+          echo "============================================"
+          echo "  TIMING SUMMARY (runtime: runc)"
+          echo "============================================"
+          echo "  Docker daemon startup:  ${DAEMON_ELAPSED}s"
+          echo "  Image build:            ${BUILD_ELAPSED}s"
+          echo "  Smoke test:             ${SMOKE_ELAPSED}s"
+          echo "  ──────────────────────────────────"
+          echo "  Total pipeline:         ${PIPELINE_ELAPSED}s"
+          echo "============================================"
+          echo ""
+          echo "=== CI JOB: Pipeline complete. ==="
+      volumeMounts:
+        - name: build-source
+          mountPath: /workspace
+      resources:
+        limits:
+          memory: "512Mi"
+          cpu: "100m"
+
+  volumes:
+    - name: dind-storage
+      emptyDir: {}
+    - name: build-source
+      configMap:
+        name: ci-build-source

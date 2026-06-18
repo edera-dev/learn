@@ -1,0 +1,52 @@
+# A simple app that the CI runner will build.
+# This is the kind of thing a real CI pipeline builds — a small web service
+# with dependencies, a multi-stage Dockerfile, and a health endpoint.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ci-build-source
+  namespace: tenant-a
+data:
+  Dockerfile: |
+    FROM python:3.12-alpine AS builder
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+
+    FROM python:3.12-alpine
+    WORKDIR /app
+    COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+    COPY app.py .
+    EXPOSE 8080
+    HEALTHCHECK --interval=10s CMD wget -qO- http://localhost:8080/health || exit 1
+    CMD ["python", "app.py"]
+
+  app.py: |
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    import json, datetime, os
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health":
+                body = json.dumps({"status": "ok"})
+            else:
+                body = json.dumps({
+                    "service": "tenant-a-api",
+                    "version": os.environ.get("BUILD_ID", "local"),
+                    "built_at": os.environ.get("BUILD_TIME", "unknown"),
+                    "message": "Hello from a CI-built image!"
+                })
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(body.encode())
+
+        def log_message(self, format, *args):
+            pass  # quiet logs for demo
+
+    HTTPServer(("", 8080), Handler).serve_forever()
+
+  requirements.txt: |
+    # intentionally minimal, but present to show a real install step
+    # (stdlib only — keeps the demo fast)
