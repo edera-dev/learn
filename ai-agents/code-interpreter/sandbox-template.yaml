@@ -1,0 +1,41 @@
+# A reusable template for the Python code-execution sandboxes the agent spawns.
+# Every sandbox created from this template runs in its own Edera zone
+# (runtimeClassName: edera) with a dedicated kernel.
+apiVersion: extensions.agents.x-k8s.io/v1beta1
+kind: SandboxTemplate
+metadata:
+  name: edera-python-template
+  namespace: default
+spec:
+  podTemplate:
+    spec:
+      runtimeClassName: edera
+      containers:
+        - name: python-runtime
+          # Prebuilt Agent Sandbox Python runtime (HTTP server on :8888 that the
+          # SDK talks to). No image build required.
+          image: us-central1-docker.pkg.dev/k8s-staging-images/agent-sandbox/python-runtime-sandbox:latest-main
+          ports:
+            - containerPort: 8888
+          readinessProbe:
+            httpGet:
+              path: "/"
+              port: 8888
+            initialDelaySeconds: 0
+            periodSeconds: 1
+          livenessProbe:
+            httpGet:
+              path: "/"
+              port: 8888
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+              ephemeral-storage: "512Mi"
+            limits:
+              # Edera maps the memory limit to the zone's max memory; without it
+              # the zone caps at the 1024M default. Keep request and limit equal.
+              memory: "512Mi"
+      restartPolicy: "OnFailure"
