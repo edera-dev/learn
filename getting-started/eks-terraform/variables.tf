@@ -23,9 +23,9 @@ variable "cluster_version" {
 }
 
 variable "instance_types" {
-  description = "List of instance types associated with the EKS Node Group"
+  description = "List of instance types associated with the EKS Node Group. Must be a bare-metal (.metal) type: Edera Protect's KVM backend requires /dev/kvm, which Nitro VMs do not expose."
   type        = list(string)
-  default     = ["m5n.xlarge"]
+  default     = ["c5.metal"]
 }
 
 variable "min_size" {
@@ -43,7 +43,7 @@ variable "max_size" {
 variable "desired_size" {
   description = "Desired number of nodes in the EKS Node Group"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "node_group_name" {

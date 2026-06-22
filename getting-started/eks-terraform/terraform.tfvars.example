@@ -13,8 +13,11 @@ cluster_version = "1.32"
 region = "us-west-2"
 
 # Optional: Node group configuration
-instance_types = ["m5n.xlarge"]
-desired_size   = 2
+# Edera Protect requires a bare-metal instance type: KVM needs /dev/kvm, which is
+# only exposed on .metal instances (Nitro VMs such as m5n.xlarge do not support it,
+# and nodes will fail to join the cluster).
+instance_types = ["c5.metal"]
+desired_size   = 1
 min_size       = 1
 max_size       = 3
 
