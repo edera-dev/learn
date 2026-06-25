@@ -178,7 +178,7 @@ run_preinstall_check() {
 
     local tmpfile
     tmpfile=$(mktemp)
-    trap 'rm -f "$tmpfile"' EXIT
+    trap 'rm -f "${tmpfile:-}"' EXIT
 
     if [[ "$VERBOSE" == true ]]; then
         if ! $PRIV_RUN run --pull always --privileged --pid=host \
