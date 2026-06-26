@@ -9,11 +9,18 @@ edera_account_id = "REPLACE_WITH_EDERA_ACCOUNT_ID"
 cluster_name    = "edera-cluster"
 cluster_version = "1.35"
 
+# Optional: Hypervisor backend — "xen" (default, production) or "kvm" (Early Access)
+# hypervisor = "xen"
+
 # Optional: AWS region (Edera AMIs only available in us-west-2 and us-gov-west-1)
 region = "us-west-2"
 
 # Optional: Node group configuration
+# For Xen, any supported instance type works:
 instance_types = ["m5n.xlarge"]
+# For KVM, use a metal instance or a nested-virtualization-capable type:
+# instance_types = ["m7i.xlarge"]
+# Supported KVM families: C8i, M8i, R8i, C7i, M7i, R7i (and variants), or any *.metal type
 desired_size   = 2
 min_size       = 1
 max_size       = 3

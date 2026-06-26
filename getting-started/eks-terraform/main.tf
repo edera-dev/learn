@@ -37,7 +37,7 @@ data "aws_ami" "edera_protect" {
   filter {
     name   = "name"
     values = [
-      "edera-protect-v1.*-al2023-amazon-eks-node-${local.cluster_version}-*"
+      "edera-protect-*-al2023-amazon-eks-${var.hypervisor}-node-${local.cluster_version}-*"
     ]
   }
 
@@ -118,7 +118,7 @@ module "eks" {
     edera_protect = {
       name = local.node_group_name
 
-      # Use Edera AMI
+      # Use Edera AMI (selected by hypervisor variable)
       ami_id   = data.aws_ami.edera_protect.id
       ami_type = "AL2023_x86_64_STANDARD"
 
