@@ -25,7 +25,7 @@ fi
 echo "Using container client: $CLIENT"
 
 # Edera version to install
-TAG="v1.6.0"
+TAG="v1.10.0"
 
 echo "Installing Edera $TAG..."
 
