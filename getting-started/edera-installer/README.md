@@ -11,6 +11,13 @@ This example provides scripts for installing Edera on any Linux node. It's desig
 
 ## Quick Start
 
+### Prerequisites
+The installer scripts assume:
+- You are able to run `make` from your workstation.
+- You can reach the nodes via SSH, either as root or with a user that is able to sudo to root.
+- You have received a GAR key from Edera.
+- You have the IP or hostname of your nodes.
+
 ### Standalone (no Kubernetes)
 
 ```bash
@@ -18,10 +25,10 @@ This example provides scripts for installing Edera on any Linux node. It's desig
 cp /path/to/your/key.json .
 
 # 2. Install Edera on your node
-INSTALLER_IP=<node-ip> make deploy
+NODE_IP=<node-ip> make deploy
 
 # 3. Verify installation (after reboot completes)
-INSTALLER_IP=<node-ip> make test-standalone
+NODE_IP=<node-ip> make test-standalone
 ```
 
 ### With Kubernetes
@@ -31,7 +38,7 @@ INSTALLER_IP=<node-ip> make test-standalone
 cp /path/to/your/key.json .
 
 # 2. Install Edera on your node
-INSTALLER_IP=<node-ip> make deploy
+NODE_IP=<node-ip> make deploy
 
 # 3. Configure Kubernetes RuntimeClass
 make configure
@@ -45,8 +52,8 @@ make test
 For cloud instances that use non-root SSH users:
 
 ```bash
-INSTALLER_IP=<node-ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make deploy
-INSTALLER_IP=<node-ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make test-standalone
+NODE_IP=<node-ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make deploy
+NODE_IP=<node-ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make test-standalone
 ```
 
 ## Prerequisites
@@ -91,7 +98,7 @@ The target node must have:
 
 ```bash
 # 1. Install Edera on a node
-INSTALLER_IP=<node-ip> make deploy
+NODE_IP=<node-ip> make deploy
 
 # 2. Configure Kubernetes RuntimeClass
 make configure
@@ -108,9 +115,9 @@ make test
 Run the deploy command for each node:
 
 ```bash
-INSTALLER_IP=192.168.1.10 make deploy
-INSTALLER_IP=192.168.1.11 make deploy
-INSTALLER_IP=192.168.1.12 make deploy
+NODE_IP=192.168.1.10 make deploy
+NODE_IP=192.168.1.11 make deploy
+NODE_IP=192.168.1.12 make deploy
 ```
 
 ### Manual Installation
@@ -183,7 +190,7 @@ make clean
 If you see `Permission denied (publickey)`, specify the SSH user and key:
 
 ```bash
-INSTALLER_IP=<node-ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make deploy
+NODE_IP=<node-ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make deploy
 ```
 
 Common SSH users by platform:
