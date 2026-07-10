@@ -5,7 +5,7 @@ help:
 	@echo "Edera Manual Installation"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  deploy          - Install Edera on a target node (requires INSTALLER_IP)"
+	@echo "  deploy          - Install Edera on a target node (requires NODE_IP)"
 	@echo "  test-standalone - Test standalone installation (no Kubernetes)"
 	@echo "  configure       - Apply RuntimeClass and label nodes (Kubernetes)"
 	@echo "  test            - Test Kubernetes deployment with a test workload"
@@ -13,23 +13,23 @@ help:
 	@echo "  clean           - Clean up test resources"
 	@echo ""
 	@echo "Environment variables:"
-	@echo "  INSTALLER_IP  - Required. IP address of the target node"
+	@echo "  NODE_IP       - Required. IP address of the target node"
 	@echo "  SSH_USER      - SSH username (default: root)"
 	@echo "  SSH_KEY       - Path to SSH private key (optional)"
 	@echo ""
 	@echo "Quick start (standalone):"
 	@echo "  1. Save your GAR key as key.json"
-	@echo "  2. INSTALLER_IP=<node-ip> make deploy"
-	@echo "  3. INSTALLER_IP=<node-ip> make test-standalone"
+	@echo "  2. NODE_IP=<node-ip> make deploy"
+	@echo "  3. NODE_IP=<node-ip> make test-standalone"
 	@echo ""
 	@echo "Quick start (Kubernetes):"
 	@echo "  1. Save your GAR key as key.json"
-	@echo "  2. INSTALLER_IP=<node-ip> make deploy"
+	@echo "  2. NODE_IP=<node-ip> make deploy"
 	@echo "  3. make configure"
 	@echo "  4. make test"
 	@echo ""
 	@echo "Example with SSH key (e.g., for EC2):"
-	@echo "  INSTALLER_IP=<ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make deploy"
+	@echo "  NODE_IP=<ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/my-key.pem make deploy"
 
 # Check that key.json exists
 check-key:
@@ -41,12 +41,12 @@ check-key:
 
 # Deploy Edera to a node
 deploy: check-key
-	@if [ -z "$(INSTALLER_IP)" ]; then \
-		echo "Error: INSTALLER_IP is not set"; \
-		echo "Usage: INSTALLER_IP=<node-ip> make deploy"; \
+	@if [ -z "$(NODE_IP)" ]; then \
+		echo "Error: NODE_IP is not set"; \
+		echo "Usage: NODE_IP=<node-ip> make deploy"; \
 		exit 1; \
 	fi
-	@echo "Installing Edera on $(INSTALLER_IP)..."
+	@echo "Installing Edera on $(NODE_IP)..."
 	./scripts/install.sh
 	@echo ""
 	@echo "Installation complete!"
@@ -57,24 +57,24 @@ deploy: check-key
 
 # Test standalone installation (no Kubernetes)
 test-standalone:
-	@if [ -z "$(INSTALLER_IP)" ]; then \
-		echo "Error: INSTALLER_IP is not set"; \
-		echo "Usage: INSTALLER_IP=<node-ip> make test-standalone"; \
+	@if [ -z "$(NODE_IP)" ]; then \
+		echo "Error: NODE_IP is not set"; \
+		echo "Usage: NODE_IP=<node-ip> make test-standalone"; \
 		exit 1; \
 	fi
-	@echo "Testing Edera installation on $(INSTALLER_IP)..."
+	@echo "Testing Edera installation on $(NODE_IP)..."
 	@SSH_OPTS=""; \
 	if [ -n "$(SSH_KEY)" ]; then SSH_OPTS="-i $(SSH_KEY)"; fi; \
 	SSH_USER=$${SSH_USER:-root}; \
 	echo ""; \
 	echo "Edera version:"; \
-	ssh $$SSH_OPTS $${SSH_USER}@$(INSTALLER_IP) "sudo protect --version"; \
+	ssh $$SSH_OPTS $${SSH_USER}@$(NODE_IP) "sudo protect --version"; \
 	echo ""; \
 	echo "Edera services:"; \
-	ssh $$SSH_OPTS $${SSH_USER}@$(INSTALLER_IP) "sudo systemctl status protect-daemon --no-pager | head -5"; \
+	ssh $$SSH_OPTS $${SSH_USER}@$(NODE_IP) "sudo systemctl status protect-daemon --no-pager | head -5"; \
 	echo ""; \
 	echo "Zone list:"; \
-	ssh $$SSH_OPTS $${SSH_USER}@$(INSTALLER_IP) "sudo protect zone list"; \
+	ssh $$SSH_OPTS $${SSH_USER}@$(NODE_IP) "sudo protect zone list"; \
 	echo ""; \
 	echo "Edera is installed and running!"
 
