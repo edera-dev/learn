@@ -47,9 +47,9 @@ scp $SSH_OPTS ./scripts/edera-install.sh ${SSH_USER}@${NODE_IP}:~
 
 # Run the installer (use sudo if not root)
 if [ "$SSH_USER" = "root" ]; then
-    ssh $SSH_OPTS "${SSH_USER}@${NODE_IP}" 'chmod +x ~/edera-install.sh && ~/edera-install.sh'
+    ssh $SSH_OPTS "${SSH_USER}@${NODE_IP}" 'chmod +x ~/edera-install.sh && ~/edera-install.sh' || true
 else
-    ssh $SSH_OPTS "${SSH_USER}@${NODE_IP}" 'chmod +x ~/edera-install.sh && sudo ~/edera-install.sh'
+    ssh -t $SSH_OPTS "${SSH_USER}@${NODE_IP}" 'chmod +x ~/edera-install.sh && sudo ~/edera-install.sh' || true
 fi
 
 echo ""
