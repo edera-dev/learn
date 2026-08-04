@@ -19,11 +19,22 @@ variable "cluster_name" {
 variable "cluster_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.32"
+  default     = "1.35"
+}
+
+variable "hypervisor" {
+  description = "Hypervisor backend to use: 'xen' (default, production) or 'kvm' (Early Access). Determines which Edera AMI is selected."
+  type        = string
+  default     = "xen"
+
+  validation {
+    condition     = contains(["xen", "kvm"], var.hypervisor)
+    error_message = "hypervisor must be 'xen' or 'kvm'."
+  }
 }
 
 variable "instance_types" {
-  description = "List of instance types associated with the EKS Node Group"
+  description = "List of instance types for the EKS Node Group. For KVM, use a metal instance or a nested-virtualization-capable type (e.g. m7i.xlarge, c7i.xlarge). For Xen, any supported type works."
   type        = list(string)
   default     = ["m5n.xlarge"]
 }
