@@ -136,7 +136,10 @@ destroy:
 	@echo "⚠️  This will destroy ALL infrastructure!"
 	@read -p "Are you sure? (type 'yes' to confirm): " confirm && [ "$$confirm" = "yes" ]
 	@echo "🧨 Destroying infrastructure..."
-	make clean
+	@echo "Attempting Kubernetes cleanup before destroying cluster..."
+	@eval "$$($(TF_TOOL) output -raw configure_kubectl 2>/dev/null)" && \
+		kubectl delete -f kubernetes/test-workload.yaml --ignore-not-found=true 2>/dev/null || \
+		echo "Skipping Kubernetes cleanup (cluster may already be unreachable)"
 	$(TF_TOOL) destroy -auto-approve
 	@echo "💥 Infrastructure destroyed"
 
