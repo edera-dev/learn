@@ -1,18 +1,16 @@
 # Copy this file to terraform.tfvars and fill in your values
 
-# Required: Edera's AWS account ID (the account that owns the AMI)
-# Edera will share their AMI with your AWS account and provide this ID
 # Contact support@edera.dev to get this account ID
-edera_account_id = "REPLACE_WITH_EDERA_ACCOUNT_ID"
+edera_account_id = "207567768011"
 
 # Optional: Cluster configuration
 cluster_name    = "edera-cluster"
-cluster_version = "1.35"
+cluster_version = "1.36"
 
 # Optional: Hypervisor backend — "xen" (default, production) or "kvm" (Early Access)
 # hypervisor = "xen"
 
-# Optional: AWS region (Edera AMIs only available in us-west-2 and us-gov-west-1)
+# Optional: AWS region
 region = "us-west-2"
 
 # Optional: Node group configuration
