@@ -1,6 +1,5 @@
 # Copy this file to terraform.tfvars and fill in your values
 
-# Contact support@edera.dev to get this account ID
 edera_account_id = "207567768011"
 
 # Optional: Cluster configuration
