@@ -5,6 +5,7 @@ INSTALLER_IMAGE="images.edera.dev/installer:on-preview"
 EDERA_REGISTRY="images.edera.dev"
 VERBOSE=false
 ASSUME_YES=false
+HYPERVISOR="xen"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 setup_colors() {
@@ -32,30 +33,69 @@ usage() {
     cat <<EOF
 Usage: EDERA_LICENSE_KEY=<key> install.sh [options]
 
-Installs Edera, a type-1 hypervisor, on this system. Reboots when complete.
+Installs Edera on this system. With Xen (the default), Edera installs a type-1
+hypervisor and reboots when complete. With KVM, Edera runs on the current kernel
+and does not reboot.
 
 Options:
-  -y, --yes       Skip the confirmation prompt
-  -v, --verbose   Show detailed output from container runs
-  -h, --help      Show this help
+  --hypervisor <xen|kvm>  Hypervisor backend to install (default: xen)
+  -y, --yes               Skip the confirmation prompt
+  -v, --verbose           Show detailed output from container runs
+  -h, --help              Show this help
 
 Get a license key at https://on.edera.dev/
 EOF
 }
 
 parse_args() {
-    for arg in "$@"; do
-        case "$arg" in
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
             --verbose|-v) VERBOSE=true ;;
             --yes|-y)     ASSUME_YES=true ;;
             --help|-h)    usage; exit 0 ;;
-            *) err "unknown option: $arg"; exit 1 ;;
+            --hypervisor)
+                if [[ $# -lt 2 ]]; then
+                    err "--hypervisor requires a value: xen or kvm"
+                    exit 1
+                fi
+                HYPERVISOR="$2"
+                shift
+                ;;
+            --hypervisor=*) HYPERVISOR="${1#--hypervisor=}" ;;
+            *) err "unknown option: $1"; exit 1 ;;
         esac
+        shift
     done
+
+    case "$HYPERVISOR" in
+        xen|kvm) ;;
+        *) err "unsupported hypervisor: $HYPERVISOR (expected xen or kvm)"; exit 1 ;;
+    esac
 }
 
 # ── Preamble & confirmation ───────────────────────────────────────────────────
 show_preamble() {
+    if [[ "$HYPERVISOR" == "kvm" ]]; then
+        cat <<EOF
+
+${BOLD}EderaOn installer (KVM)${RESET}
+
+This installer will convert this host into an Edera-managed system by:
+
+  * Installing the Edera KVM runtime and host services
+  * Using the running kernel, with no bootloader changes and no reboot
+
+Supported systems: Ubuntu 24, Amazon Linux 2023, CentOS 9, RHEL 10
+Requires: hardware virtualization exposed as /dev/kvm (bare metal, or a VM
+          with nested virtualization), Docker (Ubuntu/Amazon) or Podman
+          (RHEL/CentOS), and a valid Edera license key.
+
+For more information: https://on.edera.dev/
+
+EOF
+        return
+    fi
+
     cat <<EOF
 
 ${BOLD}EderaOn installer${RESET}
@@ -182,13 +222,13 @@ run_preinstall_check() {
 
     if [[ "$VERBOSE" == true ]]; then
         if ! $PRIV_RUN run --pull always --privileged --pid=host \
-            ghcr.io/edera-dev/edera-check:stable preinstall 2>&1 | tee "$tmpfile"; then
+            ghcr.io/edera-dev/edera-check:stable preinstall --hypervisor "$HYPERVISOR" 2>&1 | tee "$tmpfile"; then
             err "edera-check failed to run"
             exit 1
         fi
     else
         if ! $PRIV_RUN run --pull always --privileged --pid=host \
-            ghcr.io/edera-dev/edera-check:stable preinstall 2>/dev/null | tee "$tmpfile"; then
+            ghcr.io/edera-dev/edera-check:stable preinstall --hypervisor "$HYPERVISOR" 2>/dev/null | tee "$tmpfile"; then
             err "edera-check failed to run"
             exit 1
         fi
@@ -221,24 +261,32 @@ registry_login() {
 run_installer() {
     header "Installing Edera"
 
-    printf "    The system will reboot when the installer completes.\n"
-    printf "    Please reconnect via SSH after the host is done rebooting.\n\n"
+    if [[ "$HYPERVISOR" == "xen" ]]; then
+        printf "    The system will reboot when the installer completes.\n"
+        printf "    Please reconnect via SSH after the host is done rebooting.\n\n"
+    fi
 
     if [[ "$VERBOSE" == true ]]; then
         $PRIV_RUN run --rm --privileged --pid=host --net=host \
             --env 'TARGET_DIR=/host' \
             --env "EDERA_LICENSE_KEY=${EDERA_LICENSE_KEY}" \
+            --env "HYPERVISOR=${HYPERVISOR}" \
             --volume '/:/host' \
             "$INSTALLER_IMAGE"
     else
         if ! $PRIV_RUN run --rm --privileged --pid=host --net=host \
             --env 'TARGET_DIR=/host' \
             --env "EDERA_LICENSE_KEY=${EDERA_LICENSE_KEY}" \
+            --env "HYPERVISOR=${HYPERVISOR}" \
             --volume '/:/host' \
             "$INSTALLER_IMAGE" > /dev/null 2>&1; then
             err "installer failed — re-run with --verbose for details"
             exit 1
         fi
+    fi
+
+    if [[ "$HYPERVISOR" == "kvm" ]]; then
+        ok "Edera (KVM) is installed and running on this host"
     fi
 }
 
@@ -253,7 +301,10 @@ main() {
 
     header "Checking system requirements"
     detect_os
-    check_uefi
+    # UEFI is needed only to boot the Xen hypervisor; KVM keeps the current boot.
+    if [[ "$HYPERVISOR" == "xen" ]]; then
+        check_uefi
+    fi
     check_runtime
 
     run_preinstall_check

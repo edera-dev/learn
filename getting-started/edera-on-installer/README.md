@@ -75,21 +75,29 @@ EDERA_LICENSE_KEY=<your-key> bash install.sh
 
 Get your license key at [on.edera.dev](https://on.edera.dev).
 
+To install with KVM instead of Xen:
+
+```bash
+EDERA_LICENSE_KEY=<your-key> bash install.sh --hypervisor kvm
+```
+
 ### What it does
 
 1. Detects your OS and container runtime (Docker or Podman)
-2. Checks for UEFI boot mode
-3. Runs `edera-check preinstall` to verify system requirements
+2. Checks for UEFI boot mode (Xen only)
+3. Runs `edera-check preinstall` for the selected hypervisor to verify system requirements
 4. Authenticates to the Edera registry with your license key
 5. Runs the installer container
 
-The machine reboots when installation completes.
+With Xen, the machine reboots when installation completes. With KVM, the installer uses the running kernel and the machine does not reboot.
 
 ### Options
 
-| Flag | Description |
-| --- | --- |
-| `--verbose`, `-v` | Show full output from edera-check and the installer |
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--hypervisor` | `xen` | Hypervisor backend to install: `xen` or `kvm` |
+| `--yes`, `-y` | - | Skip the confirmation prompt |
+| `--verbose`, `-v` | - | Show full output from edera-check and the installer |
 
 ### Supported platforms
 
@@ -102,7 +110,8 @@ Tested on AWS EC2 in UEFI boot mode:
 
 ### Requirements
 
-- UEFI boot mode
+- UEFI boot mode (Xen)
+- `/dev/kvm` on the host (KVM): use a `*.metal` instance or a type with nested virtualization, such as C8i, M8i, R8i, C7i, M7i, or R7i. The `m5.large` default from `ec2-setup.sh` does not expose `/dev/kvm`.
 - Docker (Ubuntu, AL2023) or Podman (CentOS, RHEL) installed and accessible without sudo
 - `EDERA_LICENSE_KEY` environment variable set
 
